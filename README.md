@@ -608,7 +608,7 @@ This project is licensed under the MIT License.
 For any questions or feedback, feel free to contact:
 
 - **Name:** Bala Subramani Gattu Linga
-- **Email:** glbala87@gmail.com
+- **Email:** blinga@hamad.qa
 - **GitHub:** [glbala87](https://github.com/glbala87)
 
 ---
