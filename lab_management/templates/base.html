@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Management System</title>
+</head>
+<body>
+    <!-- Navigation Menu -->
+    <nav>
+        <ul>
+            <li><a href="{% url 'patient_registration' %}">Patients/Registration</a></li>
+            <li><a href="{% url 'lab_orders' %}">Lab Orders</a></li>
+            <li><a href="{% url 'results_entry_view' %}">Test Results</a></li>
+        </ul>
+    </nav>
+
+    <!-- Page Content -->
+    <main>
+        {% block content %}
+        <!-- Page-specific content will be injected here -->
+        {% endblock %}
+    </main>
+</body>
+</html>

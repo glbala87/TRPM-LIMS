@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lab Orders</title>
+</head>
+<body>
+    <h1>Lab Orders</h1>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Add Lab Order</button>
+    </form>
+    <hr>
+    <h2>Existing Lab Orders</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Patient OP_NO</th>
+                <th>Test Name</th>
+                <th>Sample Type</th>
+                <th>Status</th>
+                <th>Remarks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lab_order in lab_orders %}
+            <tr style="background-color: {{ 'blue' if lab_order.sample_collected else 'white' }}">
+                <td>{{ lab_order.patient.OP_NO }}</td>
+                <td>{{ lab_order.test_name }}</td>
+                <td>{{ lab_order.sample_type }}</td>
+                <td>{{ lab_order.color_code|safe }}</td>
+                <td>{{ lab_order.remarks }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

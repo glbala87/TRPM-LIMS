@@ -1,0 +1,562 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | TRPM Lab LIMS{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    :root {
+        --primary-color: #1a365d;
+        --primary-light: #2c5282;
+        --primary-dark: #0f2744;
+        --accent-color: #38b2ac;
+        --accent-light: #4fd1c5;
+        --success-color: #48bb78;
+        --warning-color: #ed8936;
+        --danger-color: #f56565;
+        --bg-light: #f7fafc;
+        --bg-dark: #1a202c;
+        --text-primary: #2d3748;
+        --text-secondary: #718096;
+        --border-color: #e2e8f0;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+        background: var(--bg-light);
+    }
+
+    /* Header Styling */
+    #header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+        padding: 0;
+        box-shadow: var(--shadow-lg);
+    }
+
+    #branding {
+        display: flex;
+        align-items: center;
+        padding: 15px 30px;
+    }
+
+    #branding h1 {
+        margin: 0;
+        padding: 0;
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+
+    #branding h1 a {
+        color: white !important;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    #branding h1 a:hover {
+        color: var(--accent-light) !important;
+    }
+
+    #branding h1 i {
+        font-size: 1.8rem;
+        color: var(--accent-color);
+    }
+
+    .logo-subtitle {
+        font-size: 0.75rem;
+        font-weight: 400;
+        opacity: 0.8;
+        display: block;
+        margin-top: 2px;
+    }
+
+    /* Top Navigation */
+    #user-tools {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 8px 30px;
+        margin: 0;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 5px;
+    }
+
+    #user-tools a {
+        color: rgba(255, 255, 255, 0.9) !important;
+        text-decoration: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+    }
+
+    #user-tools a:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: white !important;
+    }
+
+    /* Quick Navigation Bar */
+    .quick-nav {
+        background: white;
+        border-bottom: 1px solid var(--border-color);
+        padding: 0 30px;
+        display: flex;
+        gap: 5px;
+        overflow-x: auto;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .quick-nav a {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 18px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .quick-nav a:hover {
+        color: var(--primary-color);
+        background: var(--bg-light);
+        border-bottom-color: var(--accent-color);
+    }
+
+    .quick-nav a.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .quick-nav a i {
+        font-size: 1rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    .nav-divider {
+        width: 1px;
+        background: var(--border-color);
+        margin: 8px 10px;
+    }
+
+    /* Content Area */
+    #container {
+        padding: 30px;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    /* Breadcrumbs */
+    div.breadcrumbs {
+        background: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow);
+        font-size: 0.9rem;
+    }
+
+    div.breadcrumbs a {
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    div.breadcrumbs a:hover {
+        text-decoration: underline;
+    }
+
+    /* Module Styling */
+    .module {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        margin-bottom: 25px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .module caption, .module h2, .module > h3 {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 15px 20px;
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .module caption::before,
+    .module h2::before {
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+    }
+
+    /* App-specific icons */
+    caption:has(a[href*="lab_management"])::before,
+    h2:has(a[href*="lab_management"])::before { content: '\f0f1'; }
+    caption:has(a[href*="molecular_diagnostics"])::before,
+    h2:has(a[href*="molecular_diagnostics"])::before { content: '\f471'; }
+    caption:has(a[href*="reagents"])::before,
+    h2:has(a[href*="reagents"])::before { content: '\f492'; }
+    caption:has(a[href*="equipment"])::before,
+    h2:has(a[href*="equipment"])::before { content: '\f0b1'; }
+    caption:has(a[href*="storage"])::before,
+    h2:has(a[href*="storage"])::before { content: '\f187'; }
+
+    .module caption a, .module h2 a {
+        color: white !important;
+        text-decoration: none;
+    }
+
+    .module table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .module table th {
+        text-align: left;
+        padding: 12px 20px;
+        background: var(--bg-light);
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .module table td {
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .module table tr:hover {
+        background: #f0f9ff;
+    }
+
+    .module table a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .module table a:hover {
+        color: var(--accent-color);
+        text-decoration: underline;
+    }
+
+    /* Add/Change links */
+    .addlink, .changelink, .viewlink {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+    }
+
+    .addlink {
+        background: var(--success-color);
+        color: white !important;
+    }
+
+    .addlink:hover {
+        background: #38a169;
+    }
+
+    .changelink {
+        background: var(--primary-light);
+        color: white !important;
+    }
+
+    .changelink:hover {
+        background: var(--primary-color);
+    }
+
+    /* Buttons */
+    input[type="submit"], button, .button {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: var(--shadow);
+    }
+
+    input[type="submit"]:hover, button:hover, .button:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .default {
+        background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%);
+    }
+
+    /* Form Styling */
+    .form-row {
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .form-row label {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    input[type="text"], input[type="password"], input[type="email"],
+    input[type="number"], input[type="date"], textarea, select {
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    input:focus, textarea:focus, select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(56, 178, 172, 0.2);
+    }
+
+    /* Messages */
+    .messagelist li {
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .messagelist li.success {
+        background: #c6f6d5;
+        color: #22543d;
+        border-left: 4px solid var(--success-color);
+    }
+
+    .messagelist li.warning {
+        background: #fefcbf;
+        color: #744210;
+        border-left: 4px solid var(--warning-color);
+    }
+
+    .messagelist li.error {
+        background: #fed7d7;
+        color: #742a2a;
+        border-left: 4px solid var(--danger-color);
+    }
+
+    /* Dashboard Grid */
+    #content-main > .module {
+        display: block;
+    }
+
+    /* Object Tools */
+    .object-tools {
+        margin: 0 0 20px 0;
+        padding: 0;
+    }
+
+    .object-tools li {
+        display: inline-block;
+        margin-left: 10px;
+    }
+
+    .object-tools a {
+        background: var(--primary-color);
+        color: white !important;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .object-tools a:hover {
+        background: var(--primary-light);
+        transform: translateY(-1px);
+    }
+
+    /* Recent Actions */
+    #recent-actions-module {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+    }
+
+    #recent-actions-module h2 {
+        background: linear-gradient(135deg, #4a5568 0%, #718096 100%);
+    }
+
+    #recent-actions-module li {
+        padding: 10px 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        #branding {
+            padding: 12px 15px;
+        }
+
+        #branding h1 {
+            font-size: 1.1rem;
+        }
+
+        .quick-nav {
+            padding: 0 15px;
+        }
+
+        #container {
+            padding: 15px;
+        }
+    }
+
+    /* Login Page Specific */
+    body.login #header {
+        padding-bottom: 0;
+    }
+
+    body.login #container {
+        background: var(--bg-light);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    body.login #content {
+        background: white;
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: var(--shadow-lg);
+        max-width: 420px;
+        width: 100%;
+    }
+
+    body.login h1 {
+        text-align: center;
+        color: var(--primary-color);
+        margin-bottom: 30px;
+    }
+
+    body.login .form-row {
+        border: none;
+        padding: 10px 0;
+    }
+
+    body.login label {
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    body.login input[type="text"],
+    body.login input[type="password"] {
+        max-width: none;
+        width: 100%;
+    }
+
+    body.login input[type="submit"] {
+        width: 100%;
+        padding: 14px;
+        font-size: 1rem;
+        margin-top: 10px;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .module {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Status badges */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .badge-success { background: #c6f6d5; color: #22543d; }
+    .badge-warning { background: #fefcbf; color: #744210; }
+    .badge-danger { background: #fed7d7; color: #742a2a; }
+    .badge-info { background: #bee3f8; color: #2a4365; }
+</style>
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <i class="fas fa-dna"></i>
+        <span>
+            TRPM Lab LIMS
+            <span class="logo-subtitle">Translational Research and Precision Medicine Laboratory</span>
+        </span>
+    </a>
+</h1>
+{% endblock %}
+
+{% block nav-global %}
+<div class="quick-nav">
+    <a href="{% url 'admin:index' %}"><i class="fas fa-home"></i> Dashboard</a>
+
+    <div class="nav-divider"></div>
+
+    <a href="{% url 'admin:lab_management_patient_changelist' %}"><i class="fas fa-users"></i> Patients</a>
+    <a href="{% url 'admin:lab_management_laborder_changelist' %}"><i class="fas fa-clipboard-list"></i> Lab Orders</a>
+    <a href="{% url 'admin:lab_management_testresult_changelist' %}"><i class="fas fa-file-medical-alt"></i> Results</a>
+
+    <div class="nav-divider"></div>
+
+    <a href="{% url 'admin:molecular_diagnostics_molecularsample_changelist' %}"><i class="fas fa-vial"></i> Molecular Samples</a>
+    <a href="{% url 'admin:molecular_diagnostics_moleculartestpanel_changelist' %}"><i class="fas fa-microscope"></i> Test Panels</a>
+    <a href="{% url 'admin:molecular_diagnostics_molecularresult_changelist' %}"><i class="fas fa-dna"></i> Mol. Results</a>
+    <a href="{% url 'admin:molecular_diagnostics_pcrplate_changelist' %}"><i class="fas fa-th"></i> PCR Plates</a>
+
+    <div class="nav-divider"></div>
+
+    <a href="{% url 'admin:reagents_reagent_changelist' %}"><i class="fas fa-flask"></i> Reagents</a>
+    <a href="{% url 'admin:equipment_instrument_changelist' %}"><i class="fas fa-tools"></i> Equipment</a>
+    <a href="{% url 'admin:storage_storageunit_changelist' %}"><i class="fas fa-warehouse"></i> Storage</a>
+</div>
+{% endblock %}
+
+{% block welcome-msg %}
+    <i class="fas fa-user-circle"></i>
+    {% if user.first_name %}
+        Welcome, <strong>{{ user.first_name }}</strong>
+    {% else %}
+        Welcome, <strong>{{ user.username }}</strong>
+    {% endif %}
+{% endblock %}

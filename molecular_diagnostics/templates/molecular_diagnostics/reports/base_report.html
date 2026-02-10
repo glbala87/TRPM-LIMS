@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Molecular Diagnostics Report - {{ sample_id }}</title>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ lab_name }}</h1>
+        <div class="lab-info">
+            {% if lab_address %}{{ lab_address }}<br>{% endif %}
+            {% if lab_phone %}Phone: {{ lab_phone }}<br>{% endif %}
+            {% if lab_accreditation %}Accreditation: {{ lab_accreditation }}{% endif %}
+        </div>
+        <h2>MOLECULAR DIAGNOSTICS REPORT</h2>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Patient Information</div>
+        <table class="info-table">
+            <tr>
+                <td class="label">Patient Name</td>
+                <td>{{ patient_name }}</td>
+                <td class="label">Patient ID</td>
+                <td>{{ patient_id }}</td>
+            </tr>
+            <tr>
+                <td class="label">Age</td>
+                <td>{{ patient_age }} years</td>
+                <td class="label">Gender</td>
+                <td>{{ patient_gender }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Sample Information</div>
+        <table class="info-table">
+            <tr>
+                <td class="label">Sample ID</td>
+                <td>{{ sample_id }}</td>
+                <td class="label">Sample Type</td>
+                <td>{{ sample_type }}</td>
+            </tr>
+            <tr>
+                <td class="label">Collection Date</td>
+                <td>{{ collection_date|date:"Y-m-d H:i"|default:"Not specified" }}</td>
+                <td class="label">Received Date</td>
+                <td>{{ received_date|date:"Y-m-d H:i" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Test Information</div>
+        <table class="info-table">
+            <tr>
+                <td class="label">Test Name</td>
+                <td colspan="3">{{ test_name }}</td>
+            </tr>
+            <tr>
+                <td class="label">Test Code</td>
+                <td>{{ test_code }}</td>
+                <td class="label">Test Type</td>
+                <td>{{ test_type }}</td>
+            </tr>
+            {% if methodology %}
+            <tr>
+                <td class="label">Methodology</td>
+                <td colspan="3">{{ methodology }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Results</div>
+        <div class="interpretation-box">
+            <strong>Overall Interpretation:</strong>
+            <span class="{% if interpretation == 'POSITIVE' %}positive{% elif interpretation == 'NEGATIVE' %}negative{% endif %}">
+                {{ interpretation }}
+            </span>
+        </div>
+
+        {% block detailed_results %}
+        {% if result.result_summary %}
+        <p><strong>Result Summary:</strong></p>
+        <p>{{ result.result_summary }}</p>
+        {% endif %}
+        {% endblock %}
+    </div>
+
+    {% if clinical_significance %}
+    <div class="section">
+        <div class="section-title">Clinical Significance</div>
+        <p>{{ clinical_significance }}</p>
+    </div>
+    {% endif %}
+
+    {% if recommendations %}
+    <div class="section">
+        <div class="section-title">Recommendations</div>
+        <p>{{ recommendations }}</p>
+    </div>
+    {% endif %}
+
+    {% if limitations %}
+    <div class="section">
+        <div class="section-title">Test Limitations</div>
+        <p class="disclaimer">{{ limitations }}</p>
+    </div>
+    {% endif %}
+
+    <div class="signature-section">
+        <div class="signature-block">
+            {% if performed_by %}
+            <div class="signature-line">
+                {{ performed_by.get_full_name|default:performed_by.username }}<br>
+                <small>Performed: {{ performed_at|date:"Y-m-d H:i" }}</small>
+            </div>
+            {% endif %}
+        </div>
+        <div class="signature-block">
+            {% if approved_by %}
+            <div class="signature-line">
+                {{ approved_by.get_full_name|default:approved_by.username }}<br>
+                <small>Approved: {{ approved_at|date:"Y-m-d H:i" }}</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="disclaimer">
+        <p><strong>Report Date:</strong> {{ report_date|date:"Y-m-d H:i" }}</p>
+        <p>This report is intended for the use of the ordering physician and should be interpreted in conjunction
+        with the patient's clinical history and other laboratory findings. Results pertain only to the sample tested.</p>
+    </div>
+</body>
+</html>

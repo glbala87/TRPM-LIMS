@@ -1,0 +1,20 @@
+# Django LIMS Requirements
+# Install with: pip install -r requirements.txt
+
+# Core Framework
+Django>=5.1
+
+# Image Processing (for barcodes)
+Pillow>=10.0
+
+# Barcode Generation
+python-barcode>=0.15.1
+qrcode>=7.4
+
+# PDF Report Generation
+weasyprint>=60.0
+
+# Optional: For production deployment
+# gunicorn>=21.0
+# psycopg2-binary>=2.9  # For PostgreSQL
+# mysqlclient>=2.2  # For MySQL

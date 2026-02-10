@@ -1,0 +1,72 @@
+{% extends "molecular_diagnostics/reports/base_report.html" %}
+
+{% block detailed_results %}
+
+{% if sequencing_metrics %}
+<div class="qc-metrics">
+    <strong>Sequencing Quality:</strong>
+    <table class="info-table">
+        <tr>
+            <td class="label">Trace Score</td>
+            <td>{{ sequencing_metrics.trace_score|default:"-" }}</td>
+            <td class="label">Sequence Length</td>
+            <td>{{ sequencing_metrics.sequence_length|default:"-" }} bp</td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+
+{% if variant_calls %}
+<h3>Identified Variants</h3>
+<table class="results-table">
+    <thead>
+        <tr>
+            <th>Gene</th>
+            <th>Variant (cDNA)</th>
+            <th>Protein Change</th>
+            <th>Classification</th>
+            <th>Zygosity</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for variant in variant_calls %}
+        {% if variant.is_reportable %}
+        <tr>
+            <td>{{ variant.gene.symbol }}</td>
+            <td>{{ variant.hgvs_c|default:"-" }}</td>
+            <td>{{ variant.hgvs_p|default:"-" }}</td>
+            <td class="{% if variant.classification == 'PATHOGENIC' or variant.classification == 'LIKELY_PATHOGENIC' %}pathogenic{% elif variant.classification == 'VUS' %}vus{% else %}benign{% endif %}">
+                {{ variant.get_classification_display }}
+            </td>
+            <td>{{ variant.get_zygosity_display }}</td>
+        </tr>
+        {% endif %}
+        {% empty %}
+        <tr>
+            <td colspan="5">No variants identified</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% for variant in variant_calls %}
+{% if variant.is_reportable and variant.interpretation %}
+<div class="interpretation-box">
+    <strong>{{ variant.gene.symbol }} {{ variant.hgvs_c }}:</strong>
+    <p>{{ variant.interpretation }}</p>
+</div>
+{% endif %}
+{% endfor %}
+
+{% else %}
+<div class="interpretation-box">
+    <strong>No variants detected in the sequenced region.</strong>
+</div>
+{% endif %}
+
+{% if result.result_summary %}
+<h3>Summary</h3>
+<p>{{ result.result_summary }}</p>
+{% endif %}
+
+{% endblock %}

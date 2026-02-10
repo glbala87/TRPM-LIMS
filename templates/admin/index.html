@@ -1,0 +1,655 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Dashboard | TRPM Lab LIMS{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    /* Dashboard Specific Styles */
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .dashboard-header h1 {
+        margin: 0 0 10px 0;
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+
+    .dashboard-header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .stat-icon.patients { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-icon.orders { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .stat-icon.samples { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .stat-icon.results { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .stat-icon.reagents { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .stat-icon.equipment { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; }
+
+    .stat-content h3 {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-content .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-top: 5px;
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+    }
+
+    .quick-actions h2 {
+        margin: 0 0 20px 0;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .quick-actions h2 i {
+        color: var(--accent-color);
+    }
+
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .action-btn.primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .action-btn.primary:hover {
+        background: var(--primary-light);
+        transform: translateY(-2px);
+    }
+
+    .action-btn.success {
+        background: var(--success-color);
+        color: white;
+    }
+
+    .action-btn.success:hover {
+        background: #38a169;
+        transform: translateY(-2px);
+    }
+
+    .action-btn.outline {
+        background: transparent;
+        color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+
+    .action-btn.outline:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    /* App Modules Grid */
+    .app-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+
+    .app-module {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+
+    .app-module-header {
+        padding: 18px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        font-size: 1rem;
+        color: white;
+    }
+
+    .app-module-header.lab-management {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .app-module-header.molecular {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .app-module-header.reagents {
+        background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+    }
+
+    .app-module-header.equipment {
+        background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+    }
+
+    .app-module-header.storage {
+        background: linear-gradient(135deg, #834d9b 0%, #d04ed6 100%);
+    }
+
+    .app-module-header.auth {
+        background: linear-gradient(135deg, #4a5568 0%, #718096 100%);
+    }
+
+    .app-module-header i {
+        font-size: 1.2rem;
+    }
+
+    .app-module-body {
+        padding: 0;
+    }
+
+    .model-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .model-list li {
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .model-list li:last-child {
+        border-bottom: none;
+    }
+
+    .model-list a {
+        display: flex;
+        align-items: center;
+        padding: 14px 20px;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+
+    .model-list a:hover {
+        background: var(--bg-light);
+        padding-left: 25px;
+    }
+
+    .model-list .model-name {
+        flex: 1;
+        font-weight: 500;
+    }
+
+    .model-list .model-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .model-list .model-actions a {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .model-list .add-link {
+        background: var(--success-color);
+        color: white !important;
+    }
+
+    .model-list .change-link {
+        background: var(--primary-light);
+        color: white !important;
+    }
+
+    /* Recent Actions Sidebar */
+    .sidebar-module {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+
+    .sidebar-module h2 {
+        background: linear-gradient(135deg, #4a5568 0%, #718096 100%);
+        color: white;
+        padding: 15px 20px;
+        margin: 0;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .sidebar-module ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .sidebar-module li {
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9rem;
+    }
+
+    .sidebar-module li:last-child {
+        border-bottom: none;
+    }
+
+    .sidebar-module a {
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    .sidebar-module a:hover {
+        text-decoration: underline;
+    }
+
+    /* Two column layout */
+    .dashboard-layout {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 30px;
+    }
+
+    @media (max-width: 1024px) {
+        .dashboard-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Hide default admin styling */
+    #content > h1 {
+        display: none;
+    }
+
+    .delete-confirmation, .delete-objects-list {
+        margin: 10px 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1><i class="fas fa-chart-line"></i> Welcome to TRPM Lab LIMS</h1>
+    <p>Translational Research and Precision Medicine Laboratory Information Management System</p>
+</div>
+
+<div class="dashboard-stats">
+    <a href="{% url 'admin:lab_management_patient_changelist' %}" class="stat-card">
+        <div class="stat-icon patients"><i class="fas fa-users"></i></div>
+        <div class="stat-content">
+            <h3>Patients</h3>
+            <div class="stat-value">View All</div>
+        </div>
+    </a>
+    <a href="{% url 'admin:lab_management_laborder_changelist' %}" class="stat-card">
+        <div class="stat-icon orders"><i class="fas fa-clipboard-list"></i></div>
+        <div class="stat-content">
+            <h3>Lab Orders</h3>
+            <div class="stat-value">View All</div>
+        </div>
+    </a>
+    <a href="{% url 'admin:molecular_diagnostics_molecularsample_changelist' %}" class="stat-card">
+        <div class="stat-icon samples"><i class="fas fa-vial"></i></div>
+        <div class="stat-content">
+            <h3>Mol. Samples</h3>
+            <div class="stat-value">View All</div>
+        </div>
+    </a>
+    <a href="{% url 'admin:molecular_diagnostics_molecularresult_changelist' %}" class="stat-card">
+        <div class="stat-icon results"><i class="fas fa-dna"></i></div>
+        <div class="stat-content">
+            <h3>Results</h3>
+            <div class="stat-value">View All</div>
+        </div>
+    </a>
+</div>
+
+<div class="quick-actions">
+    <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+    <div class="action-buttons">
+        <a href="{% url 'admin:lab_management_patient_add' %}" class="action-btn success">
+            <i class="fas fa-user-plus"></i> New Patient
+        </a>
+        <a href="{% url 'admin:lab_management_laborder_add' %}" class="action-btn primary">
+            <i class="fas fa-plus-circle"></i> New Lab Order
+        </a>
+        <a href="{% url 'admin:molecular_diagnostics_molecularsample_add' %}" class="action-btn primary">
+            <i class="fas fa-vial"></i> New Molecular Sample
+        </a>
+        <a href="{% url 'admin:molecular_diagnostics_pcrplate_add' %}" class="action-btn outline">
+            <i class="fas fa-th"></i> New PCR Plate
+        </a>
+        <a href="{% url 'admin:reagents_reagent_add' %}" class="action-btn outline">
+            <i class="fas fa-flask"></i> Add Reagent
+        </a>
+    </div>
+</div>
+
+<div class="dashboard-layout">
+    <div class="main-content">
+        <div class="app-grid">
+            <!-- Lab Management -->
+            <div class="app-module">
+                <div class="app-module-header lab-management">
+                    <i class="fas fa-stethoscope"></i> Lab Management
+                </div>
+                <div class="app-module-body">
+                    <ul class="model-list">
+                        <li>
+                            <a href="{% url 'admin:lab_management_patient_changelist' %}">
+                                <span class="model-name"><i class="fas fa-users"></i> Patients</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:lab_management_patient_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:lab_management_laborder_changelist' %}">
+                                <span class="model-name"><i class="fas fa-clipboard-list"></i> Lab Orders</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:lab_management_laborder_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:lab_management_testresult_changelist' %}">
+                                <span class="model-name"><i class="fas fa-file-medical-alt"></i> Test Results</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:lab_management_testresult_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Molecular Diagnostics -->
+            <div class="app-module">
+                <div class="app-module-header molecular">
+                    <i class="fas fa-dna"></i> Molecular Diagnostics
+                </div>
+                <div class="app-module-body">
+                    <ul class="model-list">
+                        <li>
+                            <a href="{% url 'admin:molecular_diagnostics_molecularsample_changelist' %}">
+                                <span class="model-name"><i class="fas fa-vial"></i> Molecular Samples</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:molecular_diagnostics_molecularsample_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:molecular_diagnostics_moleculartestpanel_changelist' %}">
+                                <span class="model-name"><i class="fas fa-microscope"></i> Test Panels</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:molecular_diagnostics_moleculartestpanel_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:molecular_diagnostics_molecularresult_changelist' %}">
+                                <span class="model-name"><i class="fas fa-poll"></i> Molecular Results</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:molecular_diagnostics_molecularresult_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:molecular_diagnostics_pcrplate_changelist' %}">
+                                <span class="model-name"><i class="fas fa-th"></i> PCR Plates</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:molecular_diagnostics_pcrplate_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:molecular_diagnostics_genetarget_changelist' %}">
+                                <span class="model-name"><i class="fas fa-bullseye"></i> Gene Targets</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:molecular_diagnostics_workflowdefinition_changelist' %}">
+                                <span class="model-name"><i class="fas fa-project-diagram"></i> Workflows</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Reagents -->
+            <div class="app-module">
+                <div class="app-module-header reagents">
+                    <i class="fas fa-flask"></i> Reagents & Inventory
+                </div>
+                <div class="app-module-body">
+                    <ul class="model-list">
+                        <li>
+                            <a href="{% url 'admin:reagents_reagent_changelist' %}">
+                                <span class="model-name"><i class="fas fa-box"></i> Reagents</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:reagents_reagent_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:reagents_molecularreagent_changelist' %}">
+                                <span class="model-name"><i class="fas fa-atom"></i> Molecular Reagents</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:reagents_molecularreagent_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:reagents_reagentcategory_changelist' %}">
+                                <span class="model-name"><i class="fas fa-tags"></i> Categories</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:reagents_reagentusage_changelist' %}">
+                                <span class="model-name"><i class="fas fa-chart-bar"></i> Usage Log</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Equipment -->
+            <div class="app-module">
+                <div class="app-module-header equipment">
+                    <i class="fas fa-tools"></i> Equipment Management
+                </div>
+                <div class="app-module-body">
+                    <ul class="model-list">
+                        <li>
+                            <a href="{% url 'admin:equipment_instrument_changelist' %}">
+                                <span class="model-name"><i class="fas fa-cogs"></i> Instruments</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:equipment_instrument_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:equipment_instrumenttype_changelist' %}">
+                                <span class="model-name"><i class="fas fa-layer-group"></i> Instrument Types</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:equipment_maintenancerecord_changelist' %}">
+                                <span class="model-name"><i class="fas fa-wrench"></i> Maintenance Records</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:equipment_maintenancerecord_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Storage -->
+            <div class="app-module">
+                <div class="app-module-header storage">
+                    <i class="fas fa-warehouse"></i> Sample Storage
+                </div>
+                <div class="app-module-body">
+                    <ul class="model-list">
+                        <li>
+                            <a href="{% url 'admin:storage_storageunit_changelist' %}">
+                                <span class="model-name"><i class="fas fa-snowflake"></i> Storage Units</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:storage_storageunit_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:storage_storagerack_changelist' %}">
+                                <span class="model-name"><i class="fas fa-grip-vertical"></i> Storage Racks</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:storage_storageposition_changelist' %}">
+                                <span class="model-name"><i class="fas fa-map-marker-alt"></i> Positions</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:storage_storagelog_changelist' %}">
+                                <span class="model-name"><i class="fas fa-history"></i> Storage Log</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Authentication -->
+            <div class="app-module">
+                <div class="app-module-header auth">
+                    <i class="fas fa-shield-alt"></i> Authentication & Users
+                </div>
+                <div class="app-module-body">
+                    <ul class="model-list">
+                        <li>
+                            <a href="{% url 'admin:auth_user_changelist' %}">
+                                <span class="model-name"><i class="fas fa-user-cog"></i> Users</span>
+                                <span class="model-actions">
+                                    <a href="{% url 'admin:auth_user_add' %}" class="add-link">+ Add</a>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin:auth_group_changelist' %}">
+                                <span class="model-name"><i class="fas fa-users-cog"></i> Groups</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-module">
+            <h2><i class="fas fa-clock"></i> Recent Actions</h2>
+            {% if admin_log %}
+            <ul>
+                {% for entry in admin_log %}
+                <li>
+                    {% if entry.is_addition %}
+                        <span style="color: var(--success-color);">Added</span>
+                    {% elif entry.is_change %}
+                        <span style="color: var(--warning-color);">Changed</span>
+                    {% elif entry.is_deletion %}
+                        <span style="color: var(--danger-color);">Deleted</span>
+                    {% endif %}
+                    {% if entry.get_admin_url %}
+                        <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                    {% else %}
+                        {{ entry.object_repr }}
+                    {% endif %}
+                    <br><small style="color: var(--text-secondary);">{{ entry.content_type }}</small>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <ul>
+                <li>No recent actions.</li>
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

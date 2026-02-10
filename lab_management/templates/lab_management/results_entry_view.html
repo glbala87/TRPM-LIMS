@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <!-- Page-specific content -->
+{% endblock %}
+
+
+{% block content %}
+    <h1>Test Results</h1>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Enter Test Results</button>
+    </form>
+    <hr>
+    <h2>Existing Test Results</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Patient OP Number</th>
+                <th>Test Name</th>
+                <th>Result Data</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for test_result in test_results %}
+            <tr>
+                <td>{{ test_result.lab_order.patient.op_no }}</td>
+                <td>{{ test_result.lab_order.test_name }}</td>
+                <td>{{ test_result.result_data }}</td>
+                <td>{{ test_result.status }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

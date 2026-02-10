@@ -1,0 +1,52 @@
+{% extends "molecular_diagnostics/reports/base_report.html" %}
+
+{% block detailed_results %}
+<table class="results-table">
+    <thead>
+        <tr>
+            <th>Target Gene</th>
+            <th>Result</th>
+            <th>Ct Value</th>
+            <th>Quantity</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pcr in pcr_results %}
+        <tr>
+            <td>{{ pcr.target_gene.symbol }} ({{ pcr.target_gene.name }})</td>
+            <td class="{% if pcr.is_detected == 'DETECTED' %}positive{% else %}negative{% endif %}">
+                {{ pcr.get_is_detected_display }}
+            </td>
+            <td>{{ pcr.ct_value|default:"-" }}</td>
+            <td>
+                {% if pcr.quantity %}
+                    {{ pcr.quantity }} {{ pcr.quantity_unit }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">No PCR results available</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if detected_targets %}
+<div class="interpretation-box">
+    <strong>Detected Targets:</strong>
+    <ul>
+        {% for target in detected_targets %}
+        <li>{{ target.symbol }} - {{ target.name }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if result.result_summary %}
+<p><strong>Summary:</strong></p>
+<p>{{ result.result_summary }}</p>
+{% endif %}
+{% endblock %}

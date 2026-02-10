@@ -1,0 +1,59 @@
+<!-- lab_order_form.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Order Form</title>
+</head>
+<body>
+    <h1>Create Lab Order</h1>
+
+    <!-- Lab Order Form -->
+    <form method="POST">
+        {% csrf_token %}
+        
+        <!-- Test Type Dropdown -->
+        <label for="test_type">Test Type:</label>
+        <select id="test_type" name="test_type">
+            <option value="">Select Test Type</option>
+            {% for category in test_categories %}
+                <option value="{{ category.0 }}">{{ category.1 }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- Test Name Dropdown (initially empty) -->
+        <label for="test_name">Test Name:</label>
+        <select id="test_name" name="test_name">
+            <option value="">Select Test Name</option>
+            {% for category, tests in test_choices.items %}
+                <optgroup label="{{ category }}">
+                    {% for test in tests %}
+                        <option class="test-name-option" data-category="{{ category }}" value="{{ test.0 }}">
+                            {{ test.0 }}
+                        </option>
+                    {% endfor %}
+                </optgroup>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        // Function to filter test names based on selected test type
+        document.getElementById('test_type').addEventListener('change', function() {
+            var selectedType = this.value;
+            var options = document.querySelectorAll('.test-name-option');
+            
+            options.forEach(function(option) {
+                if (selectedType === "" || option.getAttribute('data-category') === selectedType) {
+                    option.style.display = "block";
+                } else {
+                    option.style.display = "none";
+                }
+            });
+        });
+    </script>
+</body>
+</html>

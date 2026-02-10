@@ -1,0 +1,109 @@
+{% extends "molecular_diagnostics/reports/base_report.html" %}
+
+{% block detailed_results %}
+
+{% if sequencing_metrics %}
+<div class="qc-metrics">
+    <strong>Sequencing Quality Metrics:</strong>
+    <table class="info-table">
+        <tr>
+            <td class="label">Total Reads</td>
+            <td>{{ sequencing_metrics.total_reads|default:"-" }}</td>
+            <td class="label">Mean Coverage</td>
+            <td>{{ sequencing_metrics.mean_coverage|default:"-" }}x</td>
+        </tr>
+        <tr>
+            <td class="label">Q30 Percentage</td>
+            <td>{{ sequencing_metrics.q30_percentage|default:"-" }}%</td>
+            <td class="label">On-Target</td>
+            <td>{{ sequencing_metrics.on_target_percentage|default:"-" }}%</td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+
+{% if pathogenic_variants %}
+<h3>Clinically Significant Variants</h3>
+<table class="results-table">
+    <thead>
+        <tr>
+            <th>Gene</th>
+            <th>Variant</th>
+            <th>Classification</th>
+            <th>Zygosity</th>
+            <th>VAF</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for variant in pathogenic_variants %}
+        <tr>
+            <td>{{ variant.gene.symbol }}</td>
+            <td>
+                {{ variant.hgvs_c }}
+                {% if variant.hgvs_p %}<br><small>{{ variant.hgvs_p }}</small>{% endif %}
+            </td>
+            <td class="pathogenic">{{ variant.get_classification_display }}</td>
+            <td>{{ variant.get_zygosity_display }}</td>
+            <td>{{ variant.allele_frequency|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% for variant in pathogenic_variants %}
+{% if variant.interpretation %}
+<div class="interpretation-box">
+    <strong>{{ variant.gene.symbol }} {{ variant.hgvs_c }}:</strong>
+    <p>{{ variant.interpretation }}</p>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if vus_variants %}
+<h3>Variants of Uncertain Significance (VUS)</h3>
+<table class="results-table">
+    <thead>
+        <tr>
+            <th>Gene</th>
+            <th>Variant</th>
+            <th>Consequence</th>
+            <th>Zygosity</th>
+            <th>Population Freq</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for variant in vus_variants %}
+        <tr>
+            <td>{{ variant.gene.symbol }}</td>
+            <td>
+                {{ variant.hgvs_c }}
+                {% if variant.hgvs_p %}<br><small>{{ variant.hgvs_p }}</small>{% endif %}
+            </td>
+            <td class="vus">{{ variant.consequence }}</td>
+            <td>{{ variant.get_zygosity_display }}</td>
+            <td>{{ variant.population_frequency|floatformat:4|default:"-" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p class="disclaimer">
+    <strong>Note:</strong> Variants of Uncertain Significance (VUS) are variants for which there is
+    currently insufficient evidence to determine their clinical significance. These variants may be
+    reclassified as additional information becomes available.
+</p>
+{% endif %}
+
+{% if not pathogenic_variants and not vus_variants %}
+<div class="interpretation-box">
+    <strong>No clinically significant variants detected.</strong>
+    <p>Analysis did not identify any pathogenic or likely pathogenic variants in the genes tested.</p>
+</div>
+{% endif %}
+
+{% if result.result_summary %}
+<h3>Summary</h3>
+<p>{{ result.result_summary }}</p>
+{% endif %}
+
+{% endblock %}

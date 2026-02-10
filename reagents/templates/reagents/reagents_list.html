@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reagents List</title>
+</head>
+<body>
+    <h1>Reagents in Stock</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Quantity in Stock</th>
+                <th>Reorder Level</th>
+                <th>Supplier</th>
+                <th>Expiration Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reagent in reagents %}
+            <tr>
+                <td>{{ reagent.name }}</td>
+                <td>{{ reagent.category.name }}</td>
+                <td>{{ reagent.quantity_in_stock }}</td>
+                <td>{{ reagent.reorder_level }}</td>
+                <td>{{ reagent.supplier }}</td>
+                <td>{{ reagent.expiration_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

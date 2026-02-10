@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Django Admin{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <ul id="user-tools">
+      <!-- Lab Orders link -->
+      <li><a href="{% url 'admin:lab_management_laborder_changelist' %}">
+        <i class="fa fa-clipboard"></i> Lab Orders</a></li>
+
+      <!-- Patients link -->
+      <li><a href="{% url 'admin:lab_management_patient_changelist' %}">
+        <i class="fa fa-user"></i> Patients</a></li>
+
+      <!-- Test Results link -->
+      <li><a href="{% url 'admin:lab_management_testresult_changelist' %}">
+        <i class="fa fa-vials"></i> Test Results</a></li>
+    </ul>
+  </div>
+{% endblock %}

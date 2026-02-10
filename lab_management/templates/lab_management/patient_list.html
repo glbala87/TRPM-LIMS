@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Patient List</title>
+    <style>
+        .search-container {
+            display: flex;
+            align-items: center;
+        }
+        .search-container input {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Patient List</h1>
+    
+    <!-- Action and Search Form -->
+    <form method="get" action="{% url 'patient_list' %}" class="search-container">
+        <label for="action">Action:</label>
+        <select name="action">
+            <option value="--">--</option>
+            <!-- Add more options if needed -->
+        </select>
+        
+        <!-- Search Field for OP NO -->
+        <input type="text" name="op_no" placeholder="Search by OP NO" value="{{ request.GET.op_no }}">
+        
+        <button type="submit">Go</button>
+    </form>
+
+    <!-- Table displaying patients -->
+    <table border="1">
+        <thead>
+            <tr>
+                <th>OP NO</th>
+                <th>Full Name</th>
+                <th>Age/Sex</th>
+                <th>Nationality</th>
+                <th>Barcode</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for patient in patients %}
+                <tr>
+                    <td>{{ patient.OP_NO }}</td>
+                    <td>{{ patient.first_name }} {{ patient.last_name }}</td>
+                    <td>{{ patient.age }}/{{ patient.gender }}</td>
+                    <td>{{ patient.nationality }}</td>
+                    <td>
+                        <!-- Display Print Barcode link if the barcode image URL exists -->
+                        {% if patient.barcode_image_url %}
+                            <a href="{{ patient.barcode_image_url }}" target="_blank">Print Barcode</a>
+                        {% else %}
+                            No Barcode Available
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
