@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Workflow Designer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/workflow_designer.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="workflow-designer-container">
+    <!-- Header Toolbar -->
+    <div class="designer-toolbar">
+        <div class="toolbar-left">
+            <h2>{{ title|default:"Workflow Designer" }}</h2>
+            <span class="workflow-name" id="workflowName">{{ workflow.name|default:"Untitled Workflow" }}</span>
+        </div>
+        <div class="toolbar-actions">
+            <button class="btn btn-secondary" onclick="WorkflowDesigner.undo()">
+                <span>Undo</span>
+            </button>
+            <button class="btn btn-secondary" onclick="WorkflowDesigner.redo()">
+                <span>Redo</span>
+            </button>
+            <button class="btn btn-secondary" onclick="WorkflowDesigner.zoomIn()">
+                <span>Zoom In</span>
+            </button>
+            <button class="btn btn-secondary" onclick="WorkflowDesigner.zoomOut()">
+                <span>Zoom Out</span>
+            </button>
+            <button class="btn btn-secondary" onclick="WorkflowDesigner.fitToScreen()">
+                <span>Fit</span>
+            </button>
+            <button class="btn btn-primary" onclick="WorkflowDesigner.save()">
+                <span>Save</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="designer-main">
+        <!-- Node Palette -->
+        <div class="node-palette">
+            <h3>Components</h3>
+
+            <div class="palette-section">
+                <h4>Workflow Steps</h4>
+                <div class="palette-item" draggable="true" data-node-type="start">
+                    <div class="node-icon start">S</div>
+                    <span>Start</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="end">
+                    <div class="node-icon end">E</div>
+                    <span>End</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="step">
+                    <div class="node-icon step">P</div>
+                    <span>Process Step</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="decision">
+                    <div class="node-icon decision">D</div>
+                    <span>Decision</span>
+                </div>
+            </div>
+
+            <div class="palette-section">
+                <h4>Sample Actions</h4>
+                <div class="palette-item" draggable="true" data-node-type="receive">
+                    <div class="node-icon action">R</div>
+                    <span>Receive Sample</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="extract">
+                    <div class="node-icon action">X</div>
+                    <span>Extract</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="amplify">
+                    <div class="node-icon action">A</div>
+                    <span>Amplify</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="sequence">
+                    <div class="node-icon action">Q</div>
+                    <span>Sequence</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="analyze">
+                    <div class="node-icon action">N</div>
+                    <span>Analyze</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="report">
+                    <div class="node-icon action">T</div>
+                    <span>Report</span>
+                </div>
+            </div>
+
+            <div class="palette-section">
+                <h4>Reflex Rules</h4>
+                <div class="palette-item" draggable="true" data-node-type="condition">
+                    <div class="node-icon condition">C</div>
+                    <span>Condition</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="trigger">
+                    <div class="node-icon trigger">T</div>
+                    <span>Trigger Test</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="notification">
+                    <div class="node-icon notification">N</div>
+                    <span>Notification</span>
+                </div>
+            </div>
+
+            <div class="palette-section">
+                <h4>QC Steps</h4>
+                <div class="palette-item" draggable="true" data-node-type="qc_check">
+                    <div class="node-icon qc">Q</div>
+                    <span>QC Check</span>
+                </div>
+                <div class="palette-item" draggable="true" data-node-type="approval">
+                    <div class="node-icon approval">V</div>
+                    <span>Approval</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-container" id="canvasContainer">
+            <svg id="workflowCanvas" class="workflow-canvas">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+                    </marker>
+                </defs>
+                <g id="connectionsLayer"></g>
+                <g id="nodesLayer"></g>
+            </svg>
+        </div>
+
+        <!-- Properties Panel -->
+        <div class="properties-panel" id="propertiesPanel">
+            <h3>Properties</h3>
+            <div id="propertiesContent">
+                <p class="placeholder-text">Select a node to view its properties</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Node Properties Templates -->
+<template id="stepPropertiesTemplate">
+    <div class="property-group">
+        <label>Name</label>
+        <input type="text" id="propName" class="form-control" placeholder="Step name">
+    </div>
+    <div class="property-group">
+        <label>Description</label>
+        <textarea id="propDescription" class="form-control" rows="3"></textarea>
+    </div>
+    <div class="property-group">
+        <label>Status Mapping</label>
+        <select id="propStatus" class="form-control">
+            <option value="RECEIVED">Received</option>
+            <option value="EXTRACTED">Extracted</option>
+            <option value="AMPLIFIED">Amplified</option>
+            <option value="SEQUENCED">Sequenced</option>
+            <option value="ANALYZED">Analyzed</option>
+            <option value="REPORTED">Reported</option>
+        </select>
+    </div>
+    <div class="property-group">
+        <label>Requires QC</label>
+        <input type="checkbox" id="propRequiresQC">
+    </div>
+    <div class="property-group">
+        <label>Estimated Duration (hours)</label>
+        <input type="number" id="propDuration" class="form-control" min="0" step="0.5">
+    </div>
+</template>
+
+<template id="conditionPropertiesTemplate">
+    <div class="property-group">
+        <label>Condition Name</label>
+        <input type="text" id="propConditionName" class="form-control">
+    </div>
+    <div class="property-group">
+        <label>Field</label>
+        <select id="propField" class="form-control">
+            <option value="interpretation">Interpretation</option>
+            <option value="ct_value">Ct Value</option>
+            <option value="concentration">Concentration</option>
+            <option value="purity">Purity (A260/280)</option>
+        </select>
+    </div>
+    <div class="property-group">
+        <label>Operator</label>
+        <select id="propOperator" class="form-control">
+            <option value="eq">Equals</option>
+            <option value="ne">Not Equals</option>
+            <option value="gt">Greater Than</option>
+            <option value="lt">Less Than</option>
+            <option value="gte">Greater or Equal</option>
+            <option value="lte">Less or Equal</option>
+            <option value="contains">Contains</option>
+        </select>
+    </div>
+    <div class="property-group">
+        <label>Value</label>
+        <input type="text" id="propValue" class="form-control">
+    </div>
+</template>
+
+<template id="triggerPropertiesTemplate">
+    <div class="property-group">
+        <label>Trigger Name</label>
+        <input type="text" id="propTriggerName" class="form-control">
+    </div>
+    <div class="property-group">
+        <label>Test to Order</label>
+        <select id="propTestPanel" class="form-control">
+            {% for panel in test_panels %}
+            <option value="{{ panel.id }}">{{ panel.name }}</option>
+            {% empty %}
+            <option value="">No test panels available</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="property-group">
+        <label>Auto-approve</label>
+        <input type="checkbox" id="propAutoApprove">
+    </div>
+    <div class="property-group">
+        <label>Notify Physician</label>
+        <input type="checkbox" id="propNotifyPhysician">
+    </div>
+</template>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/workflow_designer.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        WorkflowDesigner.init({
+            canvasId: 'workflowCanvas',
+            containerId: 'canvasContainer',
+            workflowId: '{{ workflow.id|default:"" }}',
+            csrfToken: '{{ csrf_token }}',
+            saveUrl: '{% url "workflow_save" %}',
+            loadUrl: '{% url "workflow_load" %}'
+        });
+
+        {% if workflow.definition %}
+        WorkflowDesigner.loadDefinition({{ workflow.definition|safe }});
+        {% endif %}
+    });
+</script>
+{% endblock %}

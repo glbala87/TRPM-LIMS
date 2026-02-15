@@ -1,0 +1,42 @@
+<!-- analytics/templates/analytics/widgets/qc_status.html -->
+<div class="widget-content">
+    <div class="row text-center mb-3">
+        <div class="col-6">
+            <div class="h2 text-success mb-0">{{ qc_data.pass_rate|floatformat:1 }}%</div>
+            <small class="text-muted">Pass Rate</small>
+        </div>
+        <div class="col-6">
+            <div class="h2 text-danger mb-0">{{ qc_data.fail_rate|floatformat:1 }}%</div>
+            <small class="text-muted">Fail Rate</small>
+        </div>
+    </div>
+
+    <table class="stats-table">
+        <tr>
+            <td>Total Records</td>
+            <td class="text-end">{{ qc_data.total }}</td>
+        </tr>
+        <tr>
+            <td>Passed</td>
+            <td class="text-end text-success">{{ qc_data.passed }}</td>
+        </tr>
+        <tr>
+            <td>Failed</td>
+            <td class="text-end text-danger">{{ qc_data.failed }}</td>
+        </tr>
+        <tr>
+            <td>Warnings</td>
+            <td class="text-end text-warning">{{ qc_data.warning }}</td>
+        </tr>
+        <tr>
+            <td>Pending</td>
+            <td class="text-end text-muted">{{ qc_data.pending }}</td>
+        </tr>
+    </table>
+
+    <div class="mt-3">
+        <div class="progress-bar-custom">
+            <div class="progress-bar-fill success" style="width: {{ qc_data.pass_rate }}%;"></div>
+        </div>
+    </div>
+</div>

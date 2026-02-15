@@ -1,0 +1,19 @@
+<!-- analytics/templates/analytics/widgets/sample_status.html -->
+<div class="widget-content">
+    <table class="stats-table">
+        {% for status, count in status_data.items %}
+        <tr>
+            <td>
+                <span class="status-badge {{ status|lower }}">
+                    {{ status|title }}
+                </span>
+            </td>
+            <td class="text-end">{{ count }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="2" class="text-center text-muted">No data available</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>

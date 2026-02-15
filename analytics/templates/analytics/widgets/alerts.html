@@ -1,0 +1,22 @@
+<!-- analytics/templates/analytics/widgets/alerts.html -->
+<div class="widget-content">
+    {% if alerts %}
+        {% for alert in alerts %}
+        <div class="alert-item {{ alert.severity }}">
+            <div class="d-flex align-items-start">
+                <i class="fas fa-{{ alert.icon }} me-2 mt-1"></i>
+                <div>
+                    <div class="alert-title">{{ alert.title }}</div>
+                    <div class="alert-message">{{ alert.message }}</div>
+                    <small class="text-muted">{{ alert.category|title }}</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+            <p class="mb-0">No critical alerts</p>
+        </div>
+    {% endif %}
+</div>

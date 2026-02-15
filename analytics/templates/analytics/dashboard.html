@@ -1,0 +1,552 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Analytics Dashboard - TRPM LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+        height: 100%;
+    }
+
+    .dashboard-card h3 {
+        margin-bottom: 15px;
+        color: #333;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+
+    .kpi-card {
+        text-align: center;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        color: white;
+        margin-bottom: 15px;
+    }
+
+    .kpi-card.success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .kpi-card.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .kpi-card.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: bold;
+        line-height: 1.2;
+    }
+
+    .kpi-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        margin-top: 5px;
+    }
+
+    .alert-item {
+        padding: 12px 15px;
+        border-left: 4px solid;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .alert-item.critical {
+        border-left-color: #dc3545;
+        background: #fff5f5;
+    }
+
+    .alert-item.warning {
+        border-left-color: #ffc107;
+        background: #fffbf0;
+    }
+
+    .alert-item.info {
+        border-left-color: #17a2b8;
+        background: #f0faff;
+    }
+
+    .alert-title {
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
+
+    .alert-message {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .status-badge.received { background: #e3f2fd; color: #1976d2; }
+    .status-badge.completed { background: #e8f5e9; color: #388e3c; }
+    .status-badge.failed { background: #ffebee; color: #d32f2f; }
+    .status-badge.pending { background: #fff3e0; color: #f57c00; }
+
+    .date-filter {
+        background: #fff;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+
+    .widget-placeholder {
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-size: 0.9rem;
+    }
+
+    .stats-table {
+        width: 100%;
+    }
+
+    .stats-table td {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .stats-table td:last-child {
+        text-align: right;
+        font-weight: 600;
+    }
+
+    .progress-bar-custom {
+        height: 8px;
+        border-radius: 4px;
+        background: #e9ecef;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .progress-bar-fill.success { background: #28a745; }
+    .progress-bar-fill.warning { background: #ffc107; }
+    .progress-bar-fill.danger { background: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-0">Analytics Dashboard</h1>
+            <p class="text-muted">Real-time laboratory performance metrics and analytics</p>
+        </div>
+    </div>
+
+    <!-- Date Filter -->
+    <div class="date-filter">
+        <form method="get" class="row align-items-center">
+            <div class="col-auto">
+                <label class="form-label mb-0 me-2">Time Period:</label>
+            </div>
+            <div class="col-auto">
+                <select name="days" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="7" {% if selected_days == 7 %}selected{% endif %}>Last 7 Days</option>
+                    <option value="14" {% if selected_days == 14 %}selected{% endif %}>Last 14 Days</option>
+                    <option value="30" {% if selected_days == 30 %}selected{% endif %}>Last 30 Days</option>
+                    <option value="60" {% if selected_days == 60 %}selected{% endif %}>Last 60 Days</option>
+                    <option value="90" {% if selected_days == 90 %}selected{% endif %}>Last 90 Days</option>
+                </select>
+            </div>
+            <div class="col-auto ms-auto">
+                <span class="text-muted small">
+                    {{ date_from|date:"M d, Y" }} - {{ date_to|date:"M d, Y" }}
+                </span>
+            </div>
+        </form>
+    </div>
+
+    <!-- Critical Alerts -->
+    {% if alerts %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-exclamation-triangle text-warning me-2"></i>Critical Alerts</h3>
+                {% for alert in alerts %}
+                <div class="alert-item {{ alert.severity }}">
+                    <div class="alert-title">
+                        <i class="fas fa-{{ alert.icon }} me-1"></i>
+                        {{ alert.title }}
+                    </div>
+                    <div class="alert-message">{{ alert.message }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- KPI Cards Row -->
+    <div class="row mb-4">
+        <!-- Samples KPIs -->
+        <div class="col-md-6 col-lg-3">
+            <div class="kpi-card">
+                <div class="kpi-value">{{ sample_kpis.today_samples|default:"0" }}</div>
+                <div class="kpi-label">Samples Today</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="kpi-card success">
+                <div class="kpi-value">{{ sample_kpis.completion_rate|default:"0" }}%</div>
+                <div class="kpi-label">Completion Rate</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="kpi-card info">
+                <div class="kpi-value">{{ sample_kpis.average_tat_hours|default:"0" }}h</div>
+                <div class="kpi-label">Avg TAT</div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="kpi-card warning">
+                <div class="kpi-value">{{ sample_kpis.pending_samples|default:"0" }}</div>
+                <div class="kpi-label">Pending Samples</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="row">
+        <!-- Sample Status Distribution -->
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-chart-pie me-2"></i>Sample Status Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="sampleStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample Trend -->
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-chart-line me-2"></i>Sample Reception Trend</h3>
+                <div class="chart-container">
+                    <canvas id="sampleTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Row -->
+    <div class="row">
+        <!-- Sample Statistics -->
+        <div class="col-lg-4">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-flask me-2"></i>Sample Statistics</h3>
+                <table class="stats-table">
+                    <tr>
+                        <td>Total Samples</td>
+                        <td>{{ sample_kpis.total_samples|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Completed</td>
+                        <td class="text-success">{{ sample_kpis.completed_samples|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>In Progress</td>
+                        <td class="text-warning">{{ sample_kpis.in_progress|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Failed</td>
+                        <td class="text-danger">{{ sample_kpis.failed_samples|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>STAT Pending</td>
+                        <td class="text-danger fw-bold">{{ sample_kpis.stat_pending|default:"0" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- QC Statistics -->
+        <div class="col-lg-4">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-check-circle me-2"></i>QC Statistics</h3>
+                <table class="stats-table">
+                    <tr>
+                        <td>Total QC Records</td>
+                        <td>{{ qc_kpis.total_qc_records|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Passed</td>
+                        <td class="text-success">{{ qc_kpis.passed|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Failed</td>
+                        <td class="text-danger">{{ qc_kpis.failed|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Pass Rate</td>
+                        <td class="text-success">{{ qc_kpis.pass_rate|default:"0" }}%</td>
+                    </tr>
+                    <tr>
+                        <td>Pending Reviews</td>
+                        <td class="text-warning">{{ qc_kpis.pending_reviews|default:"0" }}</td>
+                    </tr>
+                </table>
+
+                <div class="mt-3">
+                    <label class="small text-muted">Pass Rate</label>
+                    <div class="progress-bar-custom">
+                        <div class="progress-bar-fill success" style="width: {{ qc_kpis.pass_rate|default:0 }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equipment Statistics -->
+        <div class="col-lg-4">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-cog me-2"></i>Equipment Status</h3>
+                <table class="stats-table">
+                    <tr>
+                        <td>Total Instruments</td>
+                        <td>{{ equipment_kpis.total_instruments|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Active</td>
+                        <td class="text-success">{{ equipment_kpis.active_instruments|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Under Maintenance</td>
+                        <td class="text-warning">{{ equipment_kpis.under_maintenance|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Maintenance Due</td>
+                        <td class="text-danger">{{ equipment_kpis.maintenance_due|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Calibration Due</td>
+                        <td class="text-danger">{{ equipment_kpis.calibration_due|default:"0" }}</td>
+                    </tr>
+                </table>
+
+                <div class="mt-3">
+                    <label class="small text-muted">Utilization Rate</label>
+                    <div class="progress-bar-custom">
+                        <div class="progress-bar-fill {% if equipment_kpis.utilization_rate >= 80 %}success{% elif equipment_kpis.utilization_rate >= 60 %}warning{% else %}danger{% endif %}"
+                             style="width: {{ equipment_kpis.utilization_rate|default:0 }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="row">
+        <!-- QC Results -->
+        <div class="col-lg-4">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-chart-pie me-2"></i>QC Results Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="qcResultsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Equipment Status -->
+        <div class="col-lg-4">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-chart-pie me-2"></i>Equipment Status</h3>
+                <div class="chart-container">
+                    <canvas id="equipmentStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reagent Inventory -->
+        <div class="col-lg-4">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-vials me-2"></i>Reagent Inventory</h3>
+                <table class="stats-table">
+                    <tr>
+                        <td>Total Reagents</td>
+                        <td>{{ reagent_kpis.total_reagents|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Low Stock</td>
+                        <td class="text-warning">{{ reagent_kpis.low_stock_count|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Expired</td>
+                        <td class="text-danger">{{ reagent_kpis.expired_reagents|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Expiring Soon</td>
+                        <td class="text-warning">{{ reagent_kpis.expiring_soon|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>On Order</td>
+                        <td class="text-info">{{ reagent_kpis.on_order|default:"0" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Storage Row -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-warehouse me-2"></i>Storage Utilization</h3>
+                <table class="stats-table">
+                    <tr>
+                        <td>Total Storage Units</td>
+                        <td>{{ storage_kpis.total_units|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Active Units</td>
+                        <td class="text-success">{{ storage_kpis.active_units|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Total Positions</td>
+                        <td>{{ storage_kpis.total_positions|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Occupied</td>
+                        <td>{{ storage_kpis.occupied_positions|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Available</td>
+                        <td class="text-success">{{ storage_kpis.available_positions|default:"0" }}</td>
+                    </tr>
+                </table>
+
+                <div class="mt-3">
+                    <label class="small text-muted">Storage Utilization</label>
+                    <div class="progress-bar-custom">
+                        <div class="progress-bar-fill {% if storage_kpis.utilization_rate >= 90 %}danger{% elif storage_kpis.utilization_rate >= 75 %}warning{% else %}success{% endif %}"
+                             style="width: {{ storage_kpis.utilization_rate|default:0 }}%;"></div>
+                    </div>
+                    <small class="text-muted">{{ storage_kpis.utilization_rate|default:"0" }}% utilized</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-calendar-day me-2"></i>Today's Summary</h3>
+                <table class="stats-table">
+                    <tr>
+                        <td>Samples Received</td>
+                        <td>{{ today_summary.samples_received|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>Samples Completed</td>
+                        <td class="text-success">{{ today_summary.samples_completed|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>QC Records</td>
+                        <td>{{ today_summary.qc_records|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <td>QC Pass Rate</td>
+                        <td class="text-success">{{ today_summary.qc_pass_rate|default:"0" }}%</td>
+                    </tr>
+                    <tr>
+                        <td>Maintenance Scheduled</td>
+                        <td>{{ today_summary.maintenance_scheduled|default:"0" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sample Status Pie Chart
+    const sampleStatusData = {{ sample_status_chart|safe }};
+    if (sampleStatusData && sampleStatusData.data) {
+        const ctx1 = document.getElementById('sampleStatusChart');
+        if (ctx1) {
+            new Chart(ctx1, sampleStatusData);
+        }
+    }
+
+    // Sample Trend Line Chart
+    const sampleTrendData = {{ sample_trend_chart|safe }};
+    if (sampleTrendData && sampleTrendData.data) {
+        const ctx2 = document.getElementById('sampleTrendChart');
+        if (ctx2) {
+            new Chart(ctx2, sampleTrendData);
+        }
+    }
+
+    // QC Results Doughnut Chart
+    const qcResultsData = {{ qc_results_chart|safe }};
+    if (qcResultsData && qcResultsData.data) {
+        const ctx3 = document.getElementById('qcResultsChart');
+        if (ctx3) {
+            new Chart(ctx3, qcResultsData);
+        }
+    }
+
+    // Equipment Status Chart
+    const equipmentStatusData = {{ equipment_status_chart|safe }};
+    if (equipmentStatusData && equipmentStatusData.data) {
+        const ctx4 = document.getElementById('equipmentStatusChart');
+        if (ctx4) {
+            new Chart(ctx4, equipmentStatusData);
+        }
+    }
+
+    // Auto-refresh dashboard every 5 minutes
+    setTimeout(function() {
+        location.reload();
+    }, 300000);
+});
+
+// Function to fetch updated data via API
+function refreshDashboard() {
+    fetch('{% url "analytics:api_summary" %}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('Dashboard data refreshed:', data.data);
+                // Update KPI values here if needed
+            }
+        })
+        .catch(error => console.error('Error refreshing dashboard:', error));
+}
+</script>
+{% endblock %}
