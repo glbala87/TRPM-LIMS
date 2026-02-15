@@ -1,6 +1,10 @@
-# Django LIMS - Laboratory Information Management System
+# TRPM-LIMS - Laboratory Information Management System
 
-A comprehensive Laboratory Information Management System built with Django, featuring support for both traditional clinical laboratory testing (biochemistry, serology, immunology) and advanced molecular diagnostics (PCR, NGS, Sanger sequencing).
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Django](https://img.shields.io/badge/Django-6.0+-green.svg)](https://www.djangoproject.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A comprehensive, multi-tenant Laboratory Information Management System built with Django. Features support for clinical laboratory testing, molecular diagnostics, microbiology, pathology, quality management, and more.
 
 ---
 
@@ -12,6 +16,12 @@ A comprehensive Laboratory Information Management System built with Django, feat
 - **Test Results** - Result entry and reporting
 - **Reagent Inventory** - Stock management with expiration tracking
 
+### Multi-Tenant Architecture
+- **Organizations** - Top-level entities (hospital networks, research institutions)
+- **Laboratories** - Multi-lab support with data isolation
+- **Role-Based Access** - Organization and laboratory-level permissions
+- **Feature Flags** - Per-laboratory feature enablement
+
 ### Molecular Diagnostics Module
 - **Sample Workflow** - State machine tracking (Received → Extracted → Amplified → Sequenced → Analyzed → Reported)
 - **Test Panels** - PCR, RT-PCR, NGS, Sanger, FISH, Microarray support
@@ -21,6 +31,35 @@ A comprehensive Laboratory Information Management System built with Django, feat
 - **Quality Control** - QC metrics, controls, and validation
 - **Structured Results** - PCR Ct values, variant calls with ACMG classification
 - **PDF Reports** - Professional clinical reports with WeasyPrint
+
+### Microbiology Module
+- **Culture & Sensitivity** - Organism identification and AST
+- **Antibiotic Panels** - Configurable AST panels with breakpoints
+- **Organism Database** - Taxonomic classification support
+
+### Pathology Module
+- **Histopathology** - Block and slide tracking
+- **Specimen Processing** - Grossing to final diagnosis workflow
+- **Staining Protocols** - IHC, special stains management
+
+### Quality Management System (QMS)
+- **Document Control** - Version-controlled SOPs and policies
+- **Review Workflows** - Multi-step document approval
+- **Audit Trails** - Complete document history
+
+### Analytics & Reporting
+- **Dashboards** - Real-time laboratory metrics
+- **Charts & Statistics** - Customizable visualizations
+- **TAT Monitoring** - Turnaround time tracking
+
+### Additional Modules
+- **Billing** - Invoice and payment management
+- **Bioinformatics** - Pipeline and analysis management
+- **Projects** - Research project tracking
+- **Sensors** - Environmental monitoring (temperature, humidity)
+- **Single-Cell** - Single-cell sequencing workflows
+- **Dynamic Fields** - Custom field definitions
+- **Ontology** - Terminology management
 
 ### Equipment Management
 - **Instrument Tracking** - Serial numbers, locations, status
@@ -37,13 +76,13 @@ A comprehensive Laboratory Information Management System built with Django, feat
 ## Requirements
 
 - Python 3.10+
-- Django 5.1+
+- Django 6.0+
 - SQLite (default) or PostgreSQL/MySQL
 
 ### Python Dependencies
 
 ```
-Django>=5.1
+Django>=6.0
 Pillow>=10.0
 python-barcode>=0.15.1
 qrcode>=7.4
@@ -52,13 +91,41 @@ weasyprint>=60.0
 
 ---
 
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/glbala87/TRPM-LIMS.git
+cd TRPM-LIMS
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations
+python manage.py migrate
+
+# Create superuser
+python manage.py createsuperuser
+
+# Start development server
+python manage.py runserver
+```
+
+Access the application at: http://127.0.0.1:8000/admin/
+
+---
+
 ## Installation
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/Django-LIMS.git
-cd Django-LIMS/Django-LIMS-main
+git clone https://github.com/glbala87/TRPM-LIMS.git
+cd TRPM-LIMS
 ```
 
 ### 2. Create Virtual Environment
@@ -149,41 +216,60 @@ Access the application at: http://127.0.0.1:8000/admin/
 ## Project Structure
 
 ```
-Django-LIMS-main/
+TRPM-LIMS/
 ├── lims/                       # Project settings
 │   ├── settings.py
 │   ├── urls.py
 │   └── wsgi.py
+├── tenants/                    # Multi-tenant architecture
+│   ├── models.py              # Organization, Laboratory, Memberships
+│   └── middleware.py          # Tenant context middleware
 ├── lab_management/             # Core lab module
 │   ├── models.py              # Patient, LabOrder, TestResult
 │   ├── admin.py
-│   └── forms.py
+│   └── services/              # Label generation
 ├── reagents/                   # Reagent inventory
-│   ├── models.py              # Reagent, MolecularReagent
-│   └── admin.py
+│   └── models.py              # Reagent, MolecularReagent
 ├── molecular_diagnostics/      # Molecular testing module
-│   ├── models/
-│   │   ├── samples.py         # MolecularSample, MolecularSampleType
-│   │   ├── tests.py           # MolecularTestPanel, GeneTarget
-│   │   ├── workflows.py       # WorkflowDefinition, SampleHistory
-│   │   ├── batches.py         # PCRPlate, NGSLibrary, NGSPool
-│   │   ├── qc.py              # QCMetricDefinition, ControlSample
-│   │   └── results.py         # MolecularResult, VariantCall
-│   ├── services/
-│   │   ├── workflow_engine.py # State machine logic
-│   │   ├── tat_monitor.py     # Turnaround time tracking
-│   │   └── report_generator.py # PDF generation
-│   ├── admin/                 # Admin interfaces
+│   ├── models/                # Samples, tests, workflows, QC, results
+│   ├── services/              # Workflow engine, TAT monitor, reports
 │   └── templates/             # Report templates
-├── equipment/                  # Instrument management
-│   ├── models.py              # Instrument, MaintenanceRecord
-│   └── admin.py
-├── storage/                    # Sample storage
-│   ├── models.py              # StorageUnit, StoragePosition
-│   └── admin.py
-├── static/                     # Static files
-├── media/                      # Uploaded files
-└── templates/                  # Global templates
+├── microbiology/              # Microbiology module
+│   └── models.py              # Organisms, AST, cultures
+├── pathology/                 # Pathology module
+│   └── models.py              # Histology, blocks, slides
+├── qms/                       # Quality Management System
+│   └── models.py              # Documents, reviews, audits
+├── messaging/                 # Internal messaging
+│   └── models.py              # Messages, notifications
+├── analytics/                 # Analytics & dashboards
+│   ├── services/              # Charts, metrics, statistics
+│   ├── views.py
+│   └── templates/
+├── billing/                   # Billing & invoicing
+│   └── models.py
+├── bioinformatics/            # Bioinformatics pipelines
+│   └── models.py
+├── projects/                  # Research projects
+│   └── models.py
+├── sensors/                   # Environmental monitoring
+│   └── models.py
+├── single_cell/               # Single-cell workflows
+│   └── models.py
+├── dynamic_fields/            # Custom field definitions
+│   └── models.py
+├── ontology/                  # Terminology management
+│   └── models.py
+├── equipment/                 # Instrument management
+│   └── models.py
+├── storage/                   # Sample storage
+│   └── models.py
+├── audit/                     # Audit logging
+├── compliance/                # Compliance management
+├── data_exchange/             # Data import/export
+├── static/                    # Static files (CSS, JS)
+├── media/                     # Uploaded files
+└── templates/                 # Global templates
 ```
 
 ---
@@ -544,6 +630,15 @@ docker-compose up -d
 
 ## Data Models Reference
 
+### Multi-Tenant Models
+
+| Model | App | Description |
+|-------|-----|-------------|
+| Organization | tenants | Top-level organization entity |
+| Laboratory | tenants | Laboratory within organization |
+| OrganizationMembership | tenants | User-organization roles |
+| LaboratoryMembership | tenants | User-laboratory roles |
+
 ### Core Models
 
 | Model | App | Description |
@@ -563,20 +658,38 @@ docker-compose up -d
 | GeneTarget | Gene/genetic targets |
 | MolecularTestPanel | Test panel configurations |
 | WorkflowDefinition | Workflow definitions |
-| WorkflowStep | Steps within workflows |
-| SampleHistory | Audit trail |
 | InstrumentRun | Instrument runs |
 | PCRPlate | PCR plates (96/384-well) |
-| PlateWell | Individual wells |
 | NGSLibrary | NGS libraries |
-| NGSPool | Library pools |
-| QCMetricDefinition | QC metric specifications |
-| ControlSample | Control materials |
-| QCRecord | QC results |
 | MolecularResult | Master result records |
-| PCRResult | PCR target results |
-| SequencingResult | Sequencing metrics |
 | VariantCall | Variant annotations |
+
+### Microbiology Models
+
+| Model | Description |
+|-------|-------------|
+| Organism | Microbial organisms |
+| Antibiotic | Antibiotics for AST |
+| ASTPanel | Antibiotic sensitivity panels |
+| MicrobiologySample | Culture samples |
+| ASTResult | Sensitivity results |
+
+### Pathology Models
+
+| Model | Description |
+|-------|-------------|
+| Pathology | Pathology cases |
+| HistologyBlock | Tissue blocks |
+| HistologySlide | Slides with staining |
+| StainingProtocol | Stain protocols |
+
+### QMS Models
+
+| Model | Description |
+|-------|-------------|
+| Document | Controlled documents |
+| DocumentVersion | Version history |
+| DocumentReviewCycle | Review workflows |
 
 ### Equipment Models
 
