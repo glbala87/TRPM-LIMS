@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
-import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,26 +39,62 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # Third-party apps (if you plan to add additional features later)
-    # 'rest_framework',  # For building APIs (optional)
-    # 'django_filters',  # For advanced filtering (optional)
+    # Third-party apps
+    'rest_framework',
+    'django_filters',
+    'drf_spectacular',
+    'corsheaders',
 
-    # Your custom apps
-    'lab_management',  # This is the app we created for the LIMS
+    # Core LIMS apps
+    'lab_management',
     'reagents',
-    'molecular_diagnostics',  # Molecular and genome diagnostics
-    'equipment',  # Instrument management
-    'storage',  # Sample storage tracking
+    'molecular_diagnostics',
+    'equipment',
+    'storage',
+
+    # Phase 1 apps
+    'api',
+    'users',
+    'audit',
+    'data_exchange',
+
+    # Phase 2 apps
+    'analytics',
+    'transfers',
+    'compliance',
+
+    # Phase 3 apps
+    'instruments',
+
+    # Phase 4 apps - Feature gaps implementation
+    'tenants',           # Multi-tenant architecture
+    'single_cell',       # Single-cell genomics support
+    'bioinformatics',    # Pipeline management (drylab)
+    'ontology',          # Disease ontology integration
+    'sensors',           # Environmental monitoring
+    'dynamic_fields',    # Dynamic field creation
+    'projects',          # Project-based organization
+    'billing',           # Financial/billing module
+
+    # Phase 5 apps - Additional features
+    'microbiology',      # Antibiotic susceptibility testing (AST)
+    'qms',               # Quality management system (document management)
+    'messaging',         # Messaging, notifications, activity streams
+    'pathology',         # Histology/pathology with TNM staging
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'audit.middleware.AuditMiddleware',
+    'users.middleware.UserActivityMiddleware',
+    'tenants.middleware.TenantMiddleware',
 ]
 
 ROOT_URLCONF = 'lims.urls'
@@ -155,3 +190,41 @@ LAB_NAME = 'Translational Research and Precision Medicine Lab'
 LAB_ADDRESS = ''
 LAB_PHONE = ''
 LAB_ACCREDITATION = ''
+
+# Django REST Framework configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.StandardResultsSetPagination',
+    'PAGE_SIZE': 25,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# drf-spectacular settings for API documentation
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'TRPM-LIMS API',
+    'DESCRIPTION': 'REST API for Translational Research and Precision Medicine Laboratory Information Management System',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
+# CORS settings (for development - restrict in production)
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+# Celery Configuration (for background tasks)
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE

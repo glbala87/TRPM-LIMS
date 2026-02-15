@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Roles - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mt-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Roles</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-shield-check me-2"></i>Roles</h2>
+        {% if perms.users.add_role %}
+            <a href="{% url 'users:role_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>Create Role
+            </a>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Search and Filter -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" class="form-control" placeholder="Search roles..." value="{{ request.GET.q }}">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <select name="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-filter me-1"></i>Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Roles Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <span><strong>{{ roles|length }}</strong> role(s) found</span>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary active" data-view="table">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" data-view="grid">
+                        <i class="bi bi-grid"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-responsive" id="table-view">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">
+                            <a href="?sort=name&order={% if request.GET.sort == 'name' and request.GET.order == 'asc' %}desc{% else %}asc{% endif %}" class="text-white text-decoration-none">
+                                Role Name
+                                {% if request.GET.sort == 'name' %}
+                                    <i class="bi bi-arrow-{% if request.GET.order == 'asc' %}up{% else %}down{% endif %}"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th scope="col">Description</th>
+                        <th scope="col" class="text-center">Permissions</th>
+                        <th scope="col" class="text-center">Users</th>
+                        <th scope="col" class="text-center">Status</th>
+                        <th scope="col" class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role in roles %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'users:role_detail' role.pk %}" class="text-decoration-none fw-bold">
+                                    <span class="badge bg-{{ role.badge_color|default:'secondary' }} me-2">
+                                        <i class="bi bi-shield-fill"></i>
+                                    </span>
+                                    {{ role.name }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="text-muted">{{ role.description|truncatechars:50|default:"-" }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ role.permissions.count }}</span>
+                                {% if role.permissions.count > 0 %}
+                                    <button type="button"
+                                            class="btn btn-sm btn-link p-0 ms-1"
+                                            data-bs-toggle="tooltip"
+                                            data-bs-placement="top"
+                                            title="{{ role.permissions.all|join:', ' }}">
+                                        <i class="bi bi-info-circle"></i>
+                                    </button>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ role.user_count|default:0 }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if role.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'users:role_detail' role.pk %}" class="btn btn-outline-info" title="View">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if perms.users.change_role %}
+                                        <a href="{% url 'users:role_edit' role.pk %}" class="btn btn-outline-warning" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.users.delete_role %}
+                                        <button type="button"
+                                                class="btn btn-outline-danger"
+                                                title="Delete"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal{{ role.pk }}">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <i class="bi bi-inbox display-4 text-muted"></i>
+                                <p class="text-muted mt-2 mb-0">No roles found</p>
+                                {% if perms.users.add_role %}
+                                    <a href="{% url 'users:role_create' %}" class="btn btn-primary mt-3">
+                                        <i class="bi bi-plus-circle me-1"></i>Create First Role
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Grid View (Hidden by default) -->
+        <div class="card-body d-none" id="grid-view">
+            <div class="row">
+                {% for role in roles %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 border-{{ role.badge_color|default:'secondary' }}">
+                            <div class="card-header bg-{{ role.badge_color|default:'secondary' }} bg-opacity-10">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-shield-fill me-2"></i>{{ role.name }}
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">{{ role.description|default:"No description" }}</p>
+                                <div class="mb-2">
+                                    <strong>Permissions:</strong>
+                                    <span class="badge bg-info">{{ role.permissions.count }}</span>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Users:</strong>
+                                    <span class="badge bg-secondary">{{ role.user_count|default:0 }}</span>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <a href="{% url 'users:role_detail' role.pk %}" class="btn btn-sm btn-outline-primary">
+                                    View Details
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if roles.has_other_pages %}
+        <nav aria-label="Role pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if roles.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ roles.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-left"></i> Previous</span>
+                    </li>
+                {% endif %}
+
+                {% for num in roles.paginator.page_range %}
+                    {% if roles.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > roles.number|add:'-3' and num < roles.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if roles.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ roles.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Next <i class="bi bi-chevron-right"></i></span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+
+<!-- Delete Modals -->
+{% for role in roles %}
+    <div class="modal fade" id="deleteModal{{ role.pk }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the role <strong>{{ role.name }}</strong>?</p>
+                    {% if role.user_count > 0 %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            This role is assigned to <strong>{{ role.user_count }}</strong> user(s). They will lose their role assignment.
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form method="post" action="{% url 'users:role_delete' role.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // View toggle
+        document.querySelectorAll('[data-view]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var view = this.getAttribute('data-view');
+                document.querySelectorAll('[data-view]').forEach(function(b) {
+                    b.classList.remove('active');
+                });
+                this.classList.add('active');
+
+                if (view === 'table') {
+                    document.getElementById('table-view').classList.remove('d-none');
+                    document.getElementById('grid-view').classList.add('d-none');
+                } else {
+                    document.getElementById('table-view').classList.add('d-none');
+                    document.getElementById('grid-view').classList.remove('d-none');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

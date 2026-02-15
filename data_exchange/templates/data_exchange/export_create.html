@@ -1,0 +1,620 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'data_exchange:export_list' %}">Exports</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">New Export</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0">Create New Export</h1>
+        </div>
+    </div>
+
+    <form method="post" id="exportForm">
+        {% csrf_token %}
+
+        <div class="row">
+            <!-- Main Form -->
+            <div class="col-lg-8">
+                <!-- Template Selection (Optional) -->
+                {% if templates %}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-earmark-code me-2"></i>Use Template (Optional)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <select name="template" id="templateSelect" class="form-select">
+                                    <option value="">-- Custom Export (No Template) --</option>
+                                    {% for template in templates %}
+                                    <option value="{{ template.id }}"
+                                            data-type="{{ template.data_type }}"
+                                            data-format="{{ template.output_format }}"
+                                            data-fields="{{ template.included_fields|join:',' }}"
+                                            {% if selected_template.id == template.id %}selected{% endif %}>
+                                        {{ template.name }} ({{ template.get_data_type_display }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Select a template to pre-fill export settings</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Model/Data Type Selection -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-database me-2"></i>Step 1: Select Data Type
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for value, label in data_type_choices %}
+                            <div class="col-md-4">
+                                <input type="radio" name="data_type" value="{{ value }}" id="type_{{ value }}" class="btn-check" {% if forloop.first %}required{% endif %}>
+                                <label class="btn btn-outline-primary w-100 py-3" for="type_{{ value }}">
+                                    {% if value == 'PATIENTS' %}
+                                        <i class="bi bi-people d-block fs-3 mb-2"></i>
+                                    {% elif value == 'SAMPLES' %}
+                                        <i class="bi bi-droplet d-block fs-3 mb-2"></i>
+                                    {% elif value == 'RESULTS' %}
+                                        <i class="bi bi-clipboard-data d-block fs-3 mb-2"></i>
+                                    {% elif value == 'LAB_ORDERS' %}
+                                        <i class="bi bi-file-medical d-block fs-3 mb-2"></i>
+                                    {% elif value == 'REAGENTS' %}
+                                        <i class="bi bi-flask d-block fs-3 mb-2"></i>
+                                    {% elif value == 'EQUIPMENT' %}
+                                        <i class="bi bi-gear d-block fs-3 mb-2"></i>
+                                    {% elif value == 'AUDIT_LOGS' %}
+                                        <i class="bi bi-clock-history d-block fs-3 mb-2"></i>
+                                    {% else %}
+                                        <i class="bi bi-table d-block fs-3 mb-2"></i>
+                                    {% endif %}
+                                    {{ label }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        {% if form.data_type.errors %}
+                        <div class="alert alert-danger mt-3">
+                            {{ form.data_type.errors }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Field Selection -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-list-check me-2"></i>Step 2: Select Fields
+                        </h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllFields">Select All</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllFields">Deselect All</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Select which fields to include in the export. Drag to reorder.
+                        </p>
+
+                        <!-- Field Groups (shown based on data type) -->
+                        <div id="fieldGroups">
+                            <!-- Patients Fields -->
+                            <div class="field-group" data-type="PATIENTS" style="display: none;">
+                                <div class="row g-2">
+                                    {% for field in patient_fields %}
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox"
+                                                   name="fields" value="{{ field.name }}" id="field_{{ field.name }}">
+                                            <label class="form-check-label" for="field_{{ field.name }}">
+                                                {{ field.label }}
+                                                {% if field.required %}<span class="text-danger">*</span>{% endif %}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="id" id="field_id">
+                                            <label class="form-check-label" for="field_id">ID</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="first_name" id="field_first_name" checked>
+                                            <label class="form-check-label" for="field_first_name">First Name</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="last_name" id="field_last_name" checked>
+                                            <label class="form-check-label" for="field_last_name">Last Name</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="op_no" id="field_op_no" checked>
+                                            <label class="form-check-label" for="field_op_no">OP Number</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="date_of_birth" id="field_dob">
+                                            <label class="form-check-label" for="field_dob">Date of Birth</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="gender" id="field_gender">
+                                            <label class="form-check-label" for="field_gender">Gender</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="email" id="field_email">
+                                            <label class="form-check-label" for="field_email">Email</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="phone" id="field_phone">
+                                            <label class="form-check-label" for="field_phone">Phone</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="nationality" id="field_nationality">
+                                            <label class="form-check-label" for="field_nationality">Nationality</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="created_at" id="field_created_at">
+                                            <label class="form-check-label" for="field_created_at">Created At</label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Samples Fields -->
+                            <div class="field-group" data-type="SAMPLES" style="display: none;">
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="sample_id" id="field_sample_id" checked>
+                                            <label class="form-check-label" for="field_sample_id">Sample ID</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="patient" id="field_patient" checked>
+                                            <label class="form-check-label" for="field_patient">Patient</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="sample_type" id="field_sample_type" checked>
+                                            <label class="form-check-label" for="field_sample_type">Sample Type</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="collection_date" id="field_collection_date">
+                                            <label class="form-check-label" for="field_collection_date">Collection Date</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="status" id="field_status">
+                                            <label class="form-check-label" for="field_status">Status</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="barcode" id="field_barcode">
+                                            <label class="form-check-label" for="field_barcode">Barcode</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Results Fields -->
+                            <div class="field-group" data-type="RESULTS" style="display: none;">
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="result_id" id="field_result_id" checked>
+                                            <label class="form-check-label" for="field_result_id">Result ID</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="test_name" id="field_test_name" checked>
+                                            <label class="form-check-label" for="field_test_name">Test Name</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="result_value" id="field_result_value" checked>
+                                            <label class="form-check-label" for="field_result_value">Result Value</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="unit" id="field_unit">
+                                            <label class="form-check-label" for="field_unit">Unit</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="reference_range" id="field_reference_range">
+                                            <label class="form-check-label" for="field_reference_range">Reference Range</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input field-checkbox" type="checkbox" name="fields" value="result_date" id="field_result_date">
+                                            <label class="form-check-label" for="field_result_date">Result Date</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Default message -->
+                            <div id="selectTypeMessage" class="text-center text-muted py-4">
+                                <i class="bi bi-hand-index fs-1 d-block mb-2"></i>
+                                Please select a data type above to see available fields
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="selected_fields" id="selectedFields">
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-funnel me-2"></i>Step 3: Filter Options
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="date_from" class="form-label">Date From</label>
+                                <input type="date" name="date_from" id="date_from" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="date_to" class="form-label">Date To</label>
+                                <input type="date" name="date_to" id="date_to" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="status_filter" class="form-label">Status</label>
+                                <select name="status" id="status_filter" class="form-select">
+                                    <option value="">All Statuses</option>
+                                    <option value="active">Active</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="limit" class="form-label">Max Records</label>
+                                <select name="limit" id="limit" class="form-select">
+                                    <option value="">No Limit</option>
+                                    <option value="100">100 records</option>
+                                    <option value="500">500 records</option>
+                                    <option value="1000">1,000 records</option>
+                                    <option value="5000">5,000 records</option>
+                                    <option value="10000">10,000 records</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output Format -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-earmark me-2"></i>Step 4: Output Format
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <input type="radio" name="output_format" value="CSV" id="format_csv" class="btn-check" checked>
+                                <label class="btn btn-outline-success w-100 py-3" for="format_csv">
+                                    <i class="bi bi-filetype-csv d-block fs-2 mb-2"></i>
+                                    CSV
+                                </label>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="radio" name="output_format" value="XLSX" id="format_xlsx" class="btn-check">
+                                <label class="btn btn-outline-success w-100 py-3" for="format_xlsx">
+                                    <i class="bi bi-file-earmark-excel d-block fs-2 mb-2"></i>
+                                    Excel
+                                </label>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="radio" name="output_format" value="JSON" id="format_json" class="btn-check">
+                                <label class="btn btn-outline-warning w-100 py-3" for="format_json">
+                                    <i class="bi bi-filetype-json d-block fs-2 mb-2"></i>
+                                    JSON
+                                </label>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="radio" name="output_format" value="PDF" id="format_pdf" class="btn-check">
+                                <label class="btn btn-outline-danger w-100 py-3" for="format_pdf">
+                                    <i class="bi bi-file-earmark-pdf d-block fs-2 mb-2"></i>
+                                    PDF
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Export Summary -->
+                <div class="card shadow-sm mb-4 position-sticky" style="top: 1rem;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-clipboard-check me-2"></i>Export Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Data Type</dt>
+                            <dd class="col-sm-7" id="summaryDataType">
+                                <span class="text-muted">Not selected</span>
+                            </dd>
+
+                            <dt class="col-sm-5">Fields</dt>
+                            <dd class="col-sm-7" id="summaryFields">
+                                <span class="text-muted">0 selected</span>
+                            </dd>
+
+                            <dt class="col-sm-5">Format</dt>
+                            <dd class="col-sm-7" id="summaryFormat">
+                                <span class="badge bg-success">CSV</span>
+                            </dd>
+
+                            <dt class="col-sm-5">Filters</dt>
+                            <dd class="col-sm-7" id="summaryFilters">
+                                <span class="text-muted">None</span>
+                            </dd>
+
+                            <dt class="col-sm-5">Est. Records</dt>
+                            <dd class="col-sm-7" id="summaryRecords">
+                                <span class="text-muted">-</span>
+                            </dd>
+                        </dl>
+
+                        <hr>
+
+                        <!-- Save as Template -->
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="save_as_template" id="saveAsTemplate">
+                            <label class="form-check-label" for="saveAsTemplate">
+                                Save as template for future use
+                            </label>
+                        </div>
+
+                        <div id="templateNameField" class="mb-3" style="display: none;">
+                            <label for="template_name" class="form-label">Template Name</label>
+                            <input type="text" name="template_name" id="template_name" class="form-control" placeholder="My Export Template">
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-download me-2"></i>Export Data
+                            </button>
+                            <a href="{% url 'data_exchange:export_list' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Export Progress Modal -->
+<div class="modal fade" id="progressModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary mb-4" style="width: 4rem; height: 4rem;" role="status">
+                    <span class="visually-hidden">Exporting...</span>
+                </div>
+                <h4>Generating Export...</h4>
+                <p class="text-muted mb-0">Please wait while we prepare your data.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-check:checked + .btn-outline-primary,
+.btn-check:checked + .btn-outline-success,
+.btn-check:checked + .btn-outline-warning,
+.btn-check:checked + .btn-outline-danger {
+    color: white;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle data type selection
+    document.querySelectorAll('input[name="data_type"]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            const selectedType = this.value;
+
+            // Hide all field groups
+            document.querySelectorAll('.field-group').forEach(function(group) {
+                group.style.display = 'none';
+            });
+
+            // Show selected field group
+            const targetGroup = document.querySelector(`.field-group[data-type="${selectedType}"]`);
+            if (targetGroup) {
+                targetGroup.style.display = 'block';
+                document.getElementById('selectTypeMessage').style.display = 'none';
+            }
+
+            // Update summary
+            updateSummary();
+        });
+    });
+
+    // Handle field selection
+    document.querySelectorAll('.field-checkbox').forEach(function(checkbox) {
+        checkbox.addEventListener('change', updateSummary);
+    });
+
+    // Select/Deselect all
+    document.getElementById('selectAllFields').addEventListener('click', function() {
+        const visibleGroup = document.querySelector('.field-group[style*="block"]');
+        if (visibleGroup) {
+            visibleGroup.querySelectorAll('.field-checkbox').forEach(function(cb) {
+                cb.checked = true;
+            });
+            updateSummary();
+        }
+    });
+
+    document.getElementById('deselectAllFields').addEventListener('click', function() {
+        const visibleGroup = document.querySelector('.field-group[style*="block"]');
+        if (visibleGroup) {
+            visibleGroup.querySelectorAll('.field-checkbox').forEach(function(cb) {
+                cb.checked = false;
+            });
+            updateSummary();
+        }
+    });
+
+    // Handle format selection
+    document.querySelectorAll('input[name="output_format"]').forEach(function(radio) {
+        radio.addEventListener('change', updateSummary);
+    });
+
+    // Handle save as template
+    document.getElementById('saveAsTemplate').addEventListener('change', function() {
+        document.getElementById('templateNameField').style.display = this.checked ? 'block' : 'none';
+    });
+
+    // Template selection
+    const templateSelect = document.getElementById('templateSelect');
+    if (templateSelect) {
+        templateSelect.addEventListener('change', function() {
+            const option = this.options[this.selectedIndex];
+            if (option.value) {
+                const dataType = option.dataset.type;
+                const format = option.dataset.format;
+
+                // Select data type
+                const typeRadio = document.getElementById('type_' + dataType);
+                if (typeRadio) {
+                    typeRadio.checked = true;
+                    typeRadio.dispatchEvent(new Event('change'));
+                }
+
+                // Select format
+                const formatRadio = document.getElementById('format_' + format.toLowerCase());
+                if (formatRadio) {
+                    formatRadio.checked = true;
+                }
+
+                updateSummary();
+            }
+        });
+    }
+
+    // Form submission
+    document.getElementById('exportForm').addEventListener('submit', function(e) {
+        // Collect selected fields
+        const selectedFields = [];
+        document.querySelectorAll('.field-checkbox:checked').forEach(function(cb) {
+            selectedFields.push(cb.value);
+        });
+        document.getElementById('selectedFields').value = selectedFields.join(',');
+
+        // Validate
+        if (!document.querySelector('input[name="data_type"]:checked')) {
+            e.preventDefault();
+            alert('Please select a data type.');
+            return;
+        }
+
+        if (selectedFields.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one field to export.');
+            return;
+        }
+
+        // Show progress modal
+        const modal = new bootstrap.Modal(document.getElementById('progressModal'));
+        modal.show();
+    });
+
+    function updateSummary() {
+        // Data type
+        const dataType = document.querySelector('input[name="data_type"]:checked');
+        document.getElementById('summaryDataType').innerHTML = dataType
+            ? `<span class="badge bg-info text-dark">${dataType.parentElement.textContent.trim()}</span>`
+            : '<span class="text-muted">Not selected</span>';
+
+        // Fields
+        const checkedFields = document.querySelectorAll('.field-checkbox:checked').length;
+        document.getElementById('summaryFields').textContent = checkedFields + ' selected';
+
+        // Format
+        const format = document.querySelector('input[name="output_format"]:checked');
+        if (format) {
+            const formatClasses = {
+                'CSV': 'bg-success',
+                'XLSX': 'bg-success',
+                'JSON': 'bg-warning text-dark',
+                'PDF': 'bg-danger'
+            };
+            document.getElementById('summaryFormat').innerHTML =
+                `<span class="badge ${formatClasses[format.value]}">${format.value}</span>`;
+        }
+
+        // Filters
+        const hasDateFrom = document.getElementById('date_from').value;
+        const hasDateTo = document.getElementById('date_to').value;
+        const hasStatus = document.getElementById('status_filter').value;
+        const hasLimit = document.getElementById('limit').value;
+
+        const filters = [];
+        if (hasDateFrom || hasDateTo) filters.push('Date range');
+        if (hasStatus) filters.push('Status');
+        if (hasLimit) filters.push('Limit');
+
+        document.getElementById('summaryFilters').textContent = filters.length > 0
+            ? filters.join(', ')
+            : 'None';
+    }
+});
+</script>
+{% endblock %}

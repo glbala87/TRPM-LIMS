@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Patient Consents - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Patient Consents</h1>
+            <p class="text-muted mb-0">Track and manage patient consent records</p>
+        </div>
+        <div>
+            <a href="{% url 'compliance:consent_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> Record Consent
+            </a>
+        </div>
+    </div>
+
+    <!-- Search and Filter Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="q"
+                           value="{{ request.GET.q }}" placeholder="Patient name, ID...">
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Statuses</option>
+                        <option value="PENDING" {% if request.GET.status == 'PENDING' %}selected{% endif %}>Pending</option>
+                        <option value="CONSENTED" {% if request.GET.status == 'CONSENTED' %}selected{% endif %}>Consented</option>
+                        <option value="DECLINED" {% if request.GET.status == 'DECLINED' %}selected{% endif %}>Declined</option>
+                        <option value="WITHDRAWN" {% if request.GET.status == 'WITHDRAWN' %}selected{% endif %}>Withdrawn</option>
+                        <option value="EXPIRED" {% if request.GET.status == 'EXPIRED' %}selected{% endif %}>Expired</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="protocol" class="form-label">Protocol</label>
+                    <select class="form-select" id="protocol" name="protocol">
+                        <option value="">All Protocols</option>
+                        {% for protocol in protocols %}
+                        <option value="{{ protocol.pk }}" {% if request.GET.protocol == protocol.pk|stringformat:"d" %}selected{% endif %}>
+                            {{ protocol.name }} (v{{ protocol.version }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">Date From</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from"
+                           value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="date_to" class="form-label">Date To</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to"
+                           value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-outline-primary" title="Search">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        <a href="{% url 'compliance:consent_list' %}" class="btn btn-outline-secondary" title="Clear">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Status Summary -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="?status=PENDING" class="btn btn-sm {% if request.GET.status == 'PENDING' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                    <i class="bi bi-clock me-1"></i> Pending
+                    <span class="badge bg-dark ms-1">{{ status_counts.PENDING|default:0 }}</span>
+                </a>
+                <a href="?status=CONSENTED" class="btn btn-sm {% if request.GET.status == 'CONSENTED' %}btn-success{% else %}btn-outline-success{% endif %}">
+                    <i class="bi bi-check-circle me-1"></i> Consented
+                    <span class="badge bg-dark ms-1">{{ status_counts.CONSENTED|default:0 }}</span>
+                </a>
+                <a href="?status=DECLINED" class="btn btn-sm {% if request.GET.status == 'DECLINED' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+                    <i class="bi bi-x-circle me-1"></i> Declined
+                    <span class="badge bg-dark ms-1">{{ status_counts.DECLINED|default:0 }}</span>
+                </a>
+                <a href="?status=WITHDRAWN" class="btn btn-sm {% if request.GET.status == 'WITHDRAWN' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Withdrawn
+                    <span class="badge bg-dark ms-1">{{ status_counts.WITHDRAWN|default:0 }}</span>
+                </a>
+                <a href="?status=EXPIRED" class="btn btn-sm {% if request.GET.status == 'EXPIRED' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+                    <i class="bi bi-calendar-x me-1"></i> Expired
+                    <span class="badge bg-secondary ms-1">{{ status_counts.EXPIRED|default:0 }}</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consents Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            {% if consents %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Patient</th>
+                            <th>Protocol</th>
+                            <th>Status</th>
+                            <th>Consent Date</th>
+                            <th>Method</th>
+                            <th>Obtained By</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for consent in consents %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'compliance:consent_detail' consent.pk %}" class="text-decoration-none fw-semibold">
+                                    {{ consent.patient }}
+                                </a>
+                                {% if consent.representative_name %}
+                                <br><small class="text-muted">
+                                    <i class="bi bi-person-badge me-1"></i>
+                                    Rep: {{ consent.representative_name }}
+                                </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'compliance:protocol_detail' consent.protocol.pk %}" class="text-decoration-none">
+                                    {{ consent.protocol.name }}
+                                </a>
+                                <br><small class="text-muted">v{{ consent.protocol.version }}</small>
+                            </td>
+                            <td>
+                                <span class="badge
+                                    {% if consent.status == 'PENDING' %}bg-warning text-dark
+                                    {% elif consent.status == 'CONSENTED' %}bg-success
+                                    {% elif consent.status == 'DECLINED' %}bg-secondary
+                                    {% elif consent.status == 'WITHDRAWN' %}bg-danger
+                                    {% elif consent.status == 'EXPIRED' %}bg-dark
+                                    {% endif %}">
+                                    {% if consent.status == 'PENDING' %}<i class="bi bi-clock me-1"></i>
+                                    {% elif consent.status == 'CONSENTED' %}<i class="bi bi-check-circle me-1"></i>
+                                    {% elif consent.status == 'DECLINED' %}<i class="bi bi-x-circle me-1"></i>
+                                    {% elif consent.status == 'WITHDRAWN' %}<i class="bi bi-arrow-counterclockwise me-1"></i>
+                                    {% elif consent.status == 'EXPIRED' %}<i class="bi bi-calendar-x me-1"></i>
+                                    {% endif %}
+                                    {{ consent.get_status_display }}
+                                </span>
+                                {% if consent.status == 'WITHDRAWN' and consent.withdrawal_date %}
+                                <br><small class="text-muted">{{ consent.withdrawal_date|date:"M d, Y" }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if consent.consent_date %}
+                                    {{ consent.consent_date|date:"M d, Y" }}
+                                    <br><small class="text-muted">{{ consent.consent_date|time:"H:i" }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    {{ consent.get_consent_method_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if consent.consented_by %}
+                                    {{ consent.consented_by.get_full_name|default:consent.consented_by.username }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'compliance:consent_detail' consent.pk %}"
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if consent.status == 'PENDING' %}
+                                    <a href="{% url 'compliance:consent_give' consent.pk %}"
+                                       class="btn btn-outline-success" title="Record Consent">
+                                        <i class="bi bi-check-lg"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if consent.status == 'CONSENTED' and consent.is_active %}
+                                    <button type="button" class="btn btn-outline-danger"
+                                            data-bs-toggle="modal" data-bs-target="#withdrawModal{{ consent.pk }}"
+                                            title="Withdraw Consent">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if consent.signed_document %}
+                                    <a href="{{ consent.signed_document.url }}"
+                                       class="btn btn-outline-info" title="View Document" target="_blank">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Withdraw Modal for each consent -->
+                        {% if consent.status == 'CONSENTED' and consent.is_active %}
+                        <div class="modal fade" id="withdrawModal{{ consent.pk }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form method="post" action="{% url 'compliance:consent_withdraw' consent.pk %}">
+                                        {% csrf_token %}
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Withdraw Consent</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Are you sure you want to withdraw consent for:</p>
+                                            <ul>
+                                                <li><strong>Patient:</strong> {{ consent.patient }}</li>
+                                                <li><strong>Protocol:</strong> {{ consent.protocol.name }}</li>
+                                            </ul>
+                                            <div class="mb-3">
+                                                <label for="withdrawal_reason_{{ consent.pk }}" class="form-label">Reason for Withdrawal</label>
+                                                <textarea class="form-control" id="withdrawal_reason_{{ consent.pk }}"
+                                                          name="withdrawal_reason" rows="3" required></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-danger">Withdraw Consent</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="card-footer bg-white">
+                <nav aria-label="Consent pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item disabled">
+                            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-clipboard2-check display-4 text-muted"></i>
+                <h5 class="mt-3">No Consents Found</h5>
+                <p class="text-muted">
+                    {% if request.GET.q or request.GET.status or request.GET.protocol or request.GET.date_from or request.GET.date_to %}
+                        No consents match your search criteria. Try adjusting your filters.
+                    {% else %}
+                        Start recording patient consents using the button above.
+                    {% endif %}
+                </p>
+                <a href="{% url 'compliance:consent_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-1"></i> Record Consent
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Protocol - TRPM LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-check-input:checked {
+        background-color: #198754;
+        border-color: #198754;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'compliance:protocol_list' %}">Consent Protocols</a></li>
+            {% if form.instance.pk %}
+            <li class="breadcrumb-item"><a href="{% url 'compliance:protocol_detail' form.instance.pk %}">{{ form.instance.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Edit</li>
+            {% else %}
+            <li class="breadcrumb-item active" aria-current="page">Create New Protocol</li>
+            {% endif %}
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="mb-4">
+        <h1 class="h3 mb-1">
+            {% if form.instance.pk %}
+                Edit Protocol: {{ form.instance.name }}
+            {% else %}
+                Create New Consent Protocol
+            {% endif %}
+        </h1>
+        <p class="text-muted mb-0">
+            {% if form.instance.pk %}
+                Update the protocol details below.
+            {% else %}
+                Fill in the details to create a new IRB-approved consent protocol.
+            {% endif %}
+        </p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Basic Information -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-info-circle me-2"></i> Basic Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label for="id_name" class="form-label">Protocol Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control {% if form.name.errors %}is-invalid{% endif %}"
+                                       id="id_name" name="name" value="{{ form.name.value|default:'' }}" required>
+                                {% if form.name.errors %}
+                                <div class="invalid-feedback">{{ form.name.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="id_version" class="form-label">Version <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control {% if form.version.errors %}is-invalid{% endif %}"
+                                       id="id_version" name="version" value="{{ form.version.value|default:'' }}"
+                                       placeholder="e.g., 1.0, 2.1, A" required>
+                                {% if form.version.errors %}
+                                <div class="invalid-feedback">{{ form.version.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label for="id_description" class="form-label">Description</label>
+                                <textarea class="form-control {% if form.description.errors %}is-invalid{% endif %}"
+                                          id="id_description" name="description" rows="4">{{ form.description.value|default:'' }}</textarea>
+                                {% if form.description.errors %}
+                                <div class="invalid-feedback">{{ form.description.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">{{ form.description.help_text }}</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_protocol_type" class="form-label">Protocol Type <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.protocol_type.errors %}is-invalid{% endif %}"
+                                        id="id_protocol_type" name="protocol_type" required>
+                                    <option value="">Select a type...</option>
+                                    <option value="GENERAL" {% if form.protocol_type.value == 'GENERAL' %}selected{% endif %}>General Research Consent</option>
+                                    <option value="GENETIC" {% if form.protocol_type.value == 'GENETIC' %}selected{% endif %}>Genetic Testing Consent</option>
+                                    <option value="BIOBANK" {% if form.protocol_type.value == 'BIOBANK' %}selected{% endif %}>Biobanking Consent</option>
+                                    <option value="CLINICAL_TRIAL" {% if form.protocol_type.value == 'CLINICAL_TRIAL' %}selected{% endif %}>Clinical Trial Consent</option>
+                                    <option value="DATA_SHARING" {% if form.protocol_type.value == 'DATA_SHARING' %}selected{% endif %}>Data Sharing Consent</option>
+                                    <option value="PEDIATRIC" {% if form.protocol_type.value == 'PEDIATRIC' %}selected{% endif %}>Pediatric Assent/Consent</option>
+                                    <option value="EMERGENCY" {% if form.protocol_type.value == 'EMERGENCY' %}selected{% endif %}>Emergency Research Consent</option>
+                                    <option value="OTHER" {% if form.protocol_type.value == 'OTHER' %}selected{% endif %}>Other</option>
+                                </select>
+                                {% if form.protocol_type.errors %}
+                                <div class="invalid-feedback">{{ form.protocol_type.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IRB Information -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-shield-check me-2"></i> IRB Approval Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_irb_number" class="form-label">IRB Protocol Number</label>
+                                <input type="text" class="form-control {% if form.irb_number.errors %}is-invalid{% endif %}"
+                                       id="id_irb_number" name="irb_number" value="{{ form.irb_number.value|default:'' }}"
+                                       placeholder="e.g., IRB-2024-001">
+                                {% if form.irb_number.errors %}
+                                <div class="invalid-feedback">{{ form.irb_number.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6"></div>
+                            <div class="col-md-6">
+                                <label for="id_irb_approval_date" class="form-label">IRB Approval Date</label>
+                                <input type="date" class="form-control {% if form.irb_approval_date.errors %}is-invalid{% endif %}"
+                                       id="id_irb_approval_date" name="irb_approval_date"
+                                       value="{{ form.irb_approval_date.value|date:'Y-m-d'|default:'' }}">
+                                {% if form.irb_approval_date.errors %}
+                                <div class="invalid-feedback">{{ form.irb_approval_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_irb_expiration_date" class="form-label">IRB Expiration Date</label>
+                                <input type="date" class="form-control {% if form.irb_expiration_date.errors %}is-invalid{% endif %}"
+                                       id="id_irb_expiration_date" name="irb_expiration_date"
+                                       value="{{ form.irb_expiration_date.value|date:'Y-m-d'|default:'' }}">
+                                {% if form.irb_expiration_date.errors %}
+                                <div class="invalid-feedback">{{ form.irb_expiration_date.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">You will receive warnings when the IRB approval is about to expire.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Effective Dates -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-calendar-event me-2"></i> Effective Dates
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_effective_date" class="form-label">Effective Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control {% if form.effective_date.errors %}is-invalid{% endif %}"
+                                       id="id_effective_date" name="effective_date"
+                                       value="{{ form.effective_date.value|date:'Y-m-d'|default:'' }}" required>
+                                {% if form.effective_date.errors %}
+                                <div class="invalid-feedback">{{ form.effective_date.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Date when this protocol version becomes effective.</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_expiration_date" class="form-label">Expiration Date</label>
+                                <input type="date" class="form-control {% if form.expiration_date.errors %}is-invalid{% endif %}"
+                                       id="id_expiration_date" name="expiration_date"
+                                       value="{{ form.expiration_date.value|date:'Y-m-d'|default:'' }}">
+                                {% if form.expiration_date.errors %}
+                                <div class="invalid-feedback">{{ form.expiration_date.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Leave blank if the protocol has no expiration.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document Upload -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-earmark-pdf me-2"></i> Protocol Document
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if form.instance.document %}
+                        <div class="alert alert-info d-flex align-items-center mb-3">
+                            <i class="bi bi-file-earmark-check me-2"></i>
+                            <div>
+                                Current document:
+                                <a href="{{ form.instance.document.url }}" target="_blank">
+                                    {{ form.instance.document.name|slice:"-40:" }}
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="mb-3">
+                            <label for="id_document" class="form-label">
+                                {% if form.instance.document %}Replace Document{% else %}Upload Document{% endif %}
+                            </label>
+                            <input type="file" class="form-control {% if form.document.errors %}is-invalid{% endif %}"
+                                   id="id_document" name="document" accept=".pdf,.doc,.docx">
+                            {% if form.document.errors %}
+                            <div class="invalid-feedback">{{ form.document.errors.0 }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">Upload a PDF or Word document of the consent form. Max size: 10MB.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Status -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-toggle-on me-2"></i> Status
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="id_is_active" name="is_active"
+                                   {% if form.is_active.value %}checked{% endif %}>
+                            <label class="form-check-label" for="id_is_active">
+                                <strong>Active Protocol</strong>
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Active protocols can be used for obtaining new consents.
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Consent Requirements -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-list-check me-2"></i> Consent Requirements
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="id_requires_witness" name="requires_witness"
+                                       {% if form.requires_witness.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_requires_witness">
+                                    <strong>Requires Witness</strong>
+                                </label>
+                            </div>
+                            <small class="text-muted">A witness signature is required for this consent.</small>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       id="id_requires_legal_representative" name="requires_legal_representative"
+                                       {% if form.requires_legal_representative.value %}checked{% endif %}>
+                                <label class="form-check-label" for="id_requires_legal_representative">
+                                    <strong>Allow Legal Representative</strong>
+                                </label>
+                            </div>
+                            <small class="text-muted">Consent can be provided by a legally authorized representative.</small>
+                        </div>
+                        <hr>
+                        <div>
+                            <label for="id_minimum_age" class="form-label">
+                                <strong>Minimum Age for Direct Consent</strong>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" class="form-control {% if form.minimum_age.errors %}is-invalid{% endif %}"
+                                       id="id_minimum_age" name="minimum_age"
+                                       value="{{ form.minimum_age.value|default:18 }}" min="0" max="120">
+                                <span class="input-group-text">years</span>
+                            </div>
+                            {% if form.minimum_age.errors %}
+                            <div class="invalid-feedback d-block">{{ form.minimum_age.errors.0 }}</div>
+                            {% endif %}
+                            <small class="text-muted">Patients below this age require parental/guardian consent.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="card shadow-sm">
+                    <div class="card-body d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-lg me-2"></i>
+                            {% if form.instance.pk %}Update Protocol{% else %}Create Protocol{% endif %}
+                        </button>
+                        <a href="{% if form.instance.pk %}{% url 'compliance:protocol_detail' form.instance.pk %}{% else %}{% url 'compliance:protocol_list' %}{% endif %}"
+                           class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-2"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Errors -->
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger mt-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {% for error in form.non_field_errors %}
+                {{ error }}{% if not forloop.last %}<br>{% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-validate date fields
+    const irbApprovalDate = document.getElementById('id_irb_approval_date');
+    const irbExpirationDate = document.getElementById('id_irb_expiration_date');
+    const effectiveDate = document.getElementById('id_effective_date');
+    const expirationDate = document.getElementById('id_expiration_date');
+
+    function validateDates() {
+        // Validate IRB dates
+        if (irbApprovalDate.value && irbExpirationDate.value) {
+            if (new Date(irbExpirationDate.value) <= new Date(irbApprovalDate.value)) {
+                irbExpirationDate.setCustomValidity('IRB expiration must be after approval date');
+            } else {
+                irbExpirationDate.setCustomValidity('');
+            }
+        }
+
+        // Validate effective dates
+        if (effectiveDate.value && expirationDate.value) {
+            if (new Date(expirationDate.value) <= new Date(effectiveDate.value)) {
+                expirationDate.setCustomValidity('Expiration must be after effective date');
+            } else {
+                expirationDate.setCustomValidity('');
+            }
+        }
+    }
+
+    irbApprovalDate.addEventListener('change', validateDates);
+    irbExpirationDate.addEventListener('change', validateDates);
+    effectiveDate.addEventListener('change', validateDates);
+    expirationDate.addEventListener('change', validateDates);
+});
+</script>
+{% endblock %}

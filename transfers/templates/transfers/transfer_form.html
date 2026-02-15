@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Transfer - TRPM LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .formset-row {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .formset-row.to-delete {
+        opacity: 0.5;
+        background-color: #fee2e2;
+    }
+    .delete-row-btn {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'transfers:transfer_list' %}">Transfers</a></li>
+            {% if form.instance.pk %}
+            <li class="breadcrumb-item"><a href="{% url 'transfers:transfer_detail' form.instance.pk %}">{{ form.instance.transfer_number }}</a></li>
+            <li class="breadcrumb-item active">Edit</li>
+            {% else %}
+            <li class="breadcrumb-item active">New Transfer</li>
+            {% endif %}
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        {% if form.instance.pk %}
+                        <i class="bi bi-pencil"></i> Edit Transfer
+                        {% else %}
+                        <i class="bi bi-plus-lg"></i> Create New Transfer
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="transfer-form">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Location Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.source_location.id_for_label }}" class="form-label">
+                                    Source Location <span class="text-danger">*</span>
+                                </label>
+                                <select name="{{ form.source_location.name }}"
+                                        id="{{ form.source_location.id_for_label }}"
+                                        class="form-select {% if form.source_location.errors %}is-invalid{% endif %}">
+                                    <option value="">Select source location...</option>
+                                    {% for location in locations %}
+                                    <option value="{{ location.id }}"
+                                            {% if form.source_location.value == location.id|stringformat:"s" or form.source_location.value == location.id %}selected{% endif %}>
+                                        {{ location.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.source_location.errors %}
+                                <div class="invalid-feedback">{{ form.source_location.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.destination_location.id_for_label }}" class="form-label">
+                                    Destination Location <span class="text-danger">*</span>
+                                </label>
+                                <select name="{{ form.destination_location.name }}"
+                                        id="{{ form.destination_location.id_for_label }}"
+                                        class="form-select {% if form.destination_location.errors %}is-invalid{% endif %}">
+                                    <option value="">Select destination location...</option>
+                                    {% for location in locations %}
+                                    <option value="{{ location.id }}"
+                                            {% if form.destination_location.value == location.id|stringformat:"s" or form.destination_location.value == location.id %}selected{% endif %}>
+                                        {{ location.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.destination_location.errors %}
+                                <div class="invalid-feedback">{{ form.destination_location.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Shipment Details -->
+                        <h5 class="mb-3">Shipment Details</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label for="{{ form.shipment_conditions.id_for_label }}" class="form-label">
+                                    Shipment Conditions
+                                </label>
+                                <select name="{{ form.shipment_conditions.name }}"
+                                        id="{{ form.shipment_conditions.id_for_label }}"
+                                        class="form-select {% if form.shipment_conditions.errors %}is-invalid{% endif %}">
+                                    <option value="">Select conditions...</option>
+                                    <option value="AMBIENT" {% if form.shipment_conditions.value == 'AMBIENT' %}selected{% endif %}>
+                                        Ambient (Room Temperature)
+                                    </option>
+                                    <option value="REFRIGERATED" {% if form.shipment_conditions.value == 'REFRIGERATED' %}selected{% endif %}>
+                                        Refrigerated (2-8C)
+                                    </option>
+                                    <option value="FROZEN" {% if form.shipment_conditions.value == 'FROZEN' %}selected{% endif %}>
+                                        Frozen (-20C)
+                                    </option>
+                                    <option value="DEEP_FROZEN" {% if form.shipment_conditions.value == 'DEEP_FROZEN' %}selected{% endif %}>
+                                        Deep Frozen (-80C)
+                                    </option>
+                                    <option value="LIQUID_NITROGEN" {% if form.shipment_conditions.value == 'LIQUID_NITROGEN' %}selected{% endif %}>
+                                        Liquid Nitrogen (-196C)
+                                    </option>
+                                </select>
+                                {% if form.shipment_conditions.errors %}
+                                <div class="invalid-feedback">{{ form.shipment_conditions.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ form.courier.id_for_label }}" class="form-label">
+                                    Courier / Carrier
+                                </label>
+                                <input type="text"
+                                       name="{{ form.courier.name }}"
+                                       id="{{ form.courier.id_for_label }}"
+                                       class="form-control {% if form.courier.errors %}is-invalid{% endif %}"
+                                       value="{{ form.courier.value|default:'' }}"
+                                       placeholder="e.g., FedEx, DHL, Internal">
+                                {% if form.courier.errors %}
+                                <div class="invalid-feedback">{{ form.courier.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="{{ form.expected_arrival_date.id_for_label }}" class="form-label">
+                                    Expected Arrival Date
+                                </label>
+                                <input type="date"
+                                       name="{{ form.expected_arrival_date.name }}"
+                                       id="{{ form.expected_arrival_date.id_for_label }}"
+                                       class="form-control {% if form.expected_arrival_date.errors %}is-invalid{% endif %}"
+                                       value="{{ form.expected_arrival_date.value|default:'' }}">
+                                {% if form.expected_arrival_date.errors %}
+                                <div class="invalid-feedback">{{ form.expected_arrival_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Transfer Items -->
+                        <h5 class="mb-3">Transfer Items</h5>
+                        <div id="items-container">
+                            {{ item_formset.management_form }}
+
+                            {% for item_form in item_formset %}
+                            <div class="formset-row" data-index="{{ forloop.counter0 }}">
+                                {% if item_form.instance.pk %}
+                                <input type="hidden" name="{{ item_form.id.html_name }}" value="{{ item_form.id.value }}">
+                                {% endif %}
+
+                                <div class="row align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="form-label">Sample</label>
+                                        <select name="{{ item_form.sample.name }}"
+                                                class="form-select sample-select {% if item_form.sample.errors %}is-invalid{% endif %}">
+                                            <option value="">Select sample...</option>
+                                            {% for sample in available_samples %}
+                                            <option value="{{ sample.id }}"
+                                                    {% if item_form.sample.value == sample.id|stringformat:"s" or item_form.sample.value == sample.id %}selected{% endif %}>
+                                                {{ sample.sample_id }} - {{ sample.sample_type }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        {% if item_form.sample.errors %}
+                                        <div class="invalid-feedback">{{ item_form.sample.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Quantity</label>
+                                        <input type="number"
+                                               name="{{ item_form.quantity.name }}"
+                                               class="form-control {% if item_form.quantity.errors %}is-invalid{% endif %}"
+                                               value="{{ item_form.quantity.value|default:1 }}"
+                                               min="1">
+                                        {% if item_form.quantity.errors %}
+                                        <div class="invalid-feedback">{{ item_form.quantity.errors.0 }}</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Notes</label>
+                                        <input type="text"
+                                               name="{{ item_form.notes.name }}"
+                                               class="form-control"
+                                               value="{{ item_form.notes.value|default:'' }}"
+                                               placeholder="Optional notes...">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-outline-danger delete-row-btn" title="Remove">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        <input type="hidden" name="{{ item_form.DELETE.html_name }}" value="" class="delete-checkbox">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <button type="button" id="add-item-btn" class="btn btn-outline-primary mb-4">
+                            <i class="bi bi-plus-lg"></i> Add Another Item
+                        </button>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                            <textarea name="{{ form.notes.name }}"
+                                      id="{{ form.notes.id_for_label }}"
+                                      class="form-control {% if form.notes.errors %}is-invalid{% endif %}"
+                                      rows="3"
+                                      placeholder="Additional notes about this transfer...">{{ form.notes.value|default:'' }}</textarea>
+                            {% if form.notes.errors %}
+                            <div class="invalid-feedback">{{ form.notes.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'transfers:transfer_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <div>
+                                <button type="submit" name="action" value="save" class="btn btn-primary">
+                                    <i class="bi bi-check-lg"></i> Save Transfer
+                                </button>
+                                <button type="submit" name="action" value="save_and_dispatch" class="btn btn-info ms-2">
+                                    <i class="bi bi-send"></i> Save & Dispatch
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Help -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-question-circle"></i> Help</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Creating a Transfer</h6>
+                    <ol class="text-muted">
+                        <li class="mb-2">Select the source location where samples are currently stored</li>
+                        <li class="mb-2">Select the destination location where samples will be sent</li>
+                        <li class="mb-2">Choose appropriate shipment conditions to maintain sample integrity</li>
+                        <li class="mb-2">Add samples to transfer by selecting them from the dropdown</li>
+                        <li class="mb-2">Save the transfer to create it in pending status</li>
+                    </ol>
+
+                    <hr>
+
+                    <h6>Shipment Conditions</h6>
+                    <ul class="text-muted small">
+                        <li><strong>Ambient:</strong> Room temperature shipping</li>
+                        <li><strong>Refrigerated:</strong> 2-8C cold chain</li>
+                        <li><strong>Frozen:</strong> -20C frozen shipping</li>
+                        <li><strong>Deep Frozen:</strong> -80C ultra-low temp</li>
+                        <li><strong>Liquid Nitrogen:</strong> Cryogenic shipping</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Empty Form Template for JS -->
+<template id="empty-item-form">
+    <div class="formset-row" data-index="__prefix__">
+        <div class="row align-items-end">
+            <div class="col-md-5">
+                <label class="form-label">Sample</label>
+                <select name="items-__prefix__-sample" class="form-select sample-select">
+                    <option value="">Select sample...</option>
+                    {% for sample in available_samples %}
+                    <option value="{{ sample.id }}">{{ sample.sample_id }} - {{ sample.sample_type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Quantity</label>
+                <input type="number" name="items-__prefix__-quantity" class="form-control" value="1" min="1">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Notes</label>
+                <input type="text" name="items-__prefix__-notes" class="form-control" placeholder="Optional notes...">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-outline-danger delete-row-btn" title="Remove">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <input type="hidden" name="items-__prefix__-DELETE" value="" class="delete-checkbox">
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('items-container');
+    const addBtn = document.getElementById('add-item-btn');
+    const template = document.getElementById('empty-item-form');
+    const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+
+    // Add new item row
+    addBtn.addEventListener('click', function() {
+        const formCount = parseInt(totalForms.value);
+        const newForm = template.content.cloneNode(true);
+        const formHtml = newForm.querySelector('.formset-row');
+
+        // Replace __prefix__ with actual form index
+        formHtml.innerHTML = formHtml.innerHTML.replace(/__prefix__/g, formCount);
+        formHtml.setAttribute('data-index', formCount);
+
+        container.appendChild(formHtml);
+        totalForms.value = formCount + 1;
+
+        // Attach delete handler to new row
+        attachDeleteHandler(formHtml.querySelector('.delete-row-btn'));
+    });
+
+    // Delete row handler
+    function attachDeleteHandler(btn) {
+        btn.addEventListener('click', function() {
+            const row = this.closest('.formset-row');
+            const deleteInput = row.querySelector('.delete-checkbox');
+
+            if (deleteInput.value) {
+                // Unmark for deletion
+                deleteInput.value = '';
+                row.classList.remove('to-delete');
+            } else {
+                // Mark for deletion
+                deleteInput.value = 'on';
+                row.classList.add('to-delete');
+            }
+        });
+    }
+
+    // Attach handlers to existing delete buttons
+    document.querySelectorAll('.delete-row-btn').forEach(attachDeleteHandler);
+});
+</script>
+{% endblock %}

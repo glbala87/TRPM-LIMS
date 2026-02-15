@@ -48,6 +48,21 @@ class MolecularSample(models.Model):
         ('FAILED', 'Failed'),
     ]
 
+    PRIORITY_CHOICES = [
+        ('ROUTINE', 'Routine'),
+        ('URGENT', 'Urgent'),
+        ('STAT', 'STAT'),
+    ]
+
+    DERIVATION_TYPE_CHOICES = [
+        ('ORIGINAL', 'Original Sample'),
+        ('ALIQUOT', 'Aliquot'),
+        ('EXTRACT', 'Extracted Material'),
+        ('LIBRARY', 'Sequencing Library'),
+        ('DISSECTION', 'Dissected Tissue'),
+        ('AMPLICON', 'Amplified Product'),
+    ]
+
     sample_id = models.CharField(
         max_length=50,
         unique=True,
@@ -102,20 +117,31 @@ class MolecularSample(models.Model):
         related_name='samples'
     )
 
-    # Aliquot tracking
-    aliquot_of = models.ForeignKey(
+    # Sample hierarchy and derivation tracking
+    parent_sample = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='aliquots',
-        help_text="Parent sample if this is an aliquot"
+        related_name='derived_samples',
+        help_text="Parent sample this was derived from"
+    )
+    derivation_type = models.CharField(
+        max_length=20,
+        choices=DERIVATION_TYPE_CHOICES,
+        default='ORIGINAL',
+        help_text="How this sample was derived from parent"
     )
     aliquot_number = models.PositiveIntegerField(
         null=True,
         blank=True,
         help_text="Aliquot number (1, 2, 3, etc.)"
     )
+    # Keep aliquot_of as an alias property for backward compatibility
+    @property
+    def aliquot_of(self):
+        """Backward compatibility alias for parent_sample."""
+        return self.parent_sample if self.derivation_type == 'ALIQUOT' else None
 
     volume_ul = models.DecimalField(
         max_digits=10,
@@ -141,11 +167,7 @@ class MolecularSample(models.Model):
 
     priority = models.CharField(
         max_length=20,
-        choices=[
-            ('ROUTINE', 'Routine'),
-            ('URGENT', 'Urgent'),
-            ('STAT', 'STAT'),
-        ],
+        choices=PRIORITY_CHOICES,
         default='ROUTINE'
     )
 
@@ -183,11 +205,105 @@ class MolecularSample(models.Model):
 
     @property
     def is_aliquot(self):
-        return self.aliquot_of is not None
+        return self.derivation_type == 'ALIQUOT'
+
+    @property
+    def is_derived(self):
+        """Check if this sample was derived from another sample."""
+        return self.parent_sample is not None
+
+    @property
+    def is_original(self):
+        """Check if this is an original sample (not derived)."""
+        return self.derivation_type == 'ORIGINAL' and self.parent_sample is None
 
     @property
     def patient(self):
         return self.lab_order.patient
+
+    def get_ancestor_chain(self):
+        """
+        Get the complete ancestry chain from this sample back to the original.
+        Returns a list starting with the oldest ancestor and ending with self.
+        """
+        chain = [self]
+        current = self
+
+        # Prevent infinite loops with a max depth
+        max_depth = 20
+        depth = 0
+
+        while current.parent_sample and depth < max_depth:
+            chain.insert(0, current.parent_sample)
+            current = current.parent_sample
+            depth += 1
+
+        return chain
+
+    def get_root_sample(self):
+        """Get the original/root sample in the ancestry chain."""
+        chain = self.get_ancestor_chain()
+        return chain[0] if chain else self
+
+    def get_descendants(self, include_self=False):
+        """
+        Get all samples derived from this sample (recursive).
+        Returns a flat list of all descendant samples.
+        """
+        descendants = []
+        if include_self:
+            descendants.append(self)
+
+        for child in self.derived_samples.all():
+            descendants.append(child)
+            descendants.extend(child.get_descendants(include_self=False))
+
+        return descendants
+
+    def create_aliquot(self, volume_ul=None, created_by=None, notes=''):
+        """
+        Create an aliquot from this sample.
+        Returns the new aliquot sample.
+        """
+        # Count existing aliquots to determine aliquot number
+        existing_aliquots = MolecularSample.objects.filter(
+            parent_sample=self,
+            derivation_type='ALIQUOT'
+        ).count()
+
+        aliquot = MolecularSample.objects.create(
+            lab_order=self.lab_order,
+            sample_type=self.sample_type,
+            parent_sample=self,
+            derivation_type='ALIQUOT',
+            aliquot_number=existing_aliquots + 1,
+            volume_ul=volume_ul,
+            priority=self.priority,
+            notes=notes,
+            created_by=created_by,
+        )
+        return aliquot
+
+    def create_extract(self, volume_ul=None, concentration_ng_ul=None,
+                       a260_280_ratio=None, created_by=None, notes=''):
+        """
+        Create an extracted material sample from this sample.
+        Returns the new extract sample.
+        """
+        extract = MolecularSample.objects.create(
+            lab_order=self.lab_order,
+            sample_type=self.sample_type,
+            parent_sample=self,
+            derivation_type='EXTRACT',
+            volume_ul=volume_ul,
+            concentration_ng_ul=concentration_ng_ul,
+            a260_280_ratio=a260_280_ratio,
+            priority=self.priority,
+            workflow_status='EXTRACTED',
+            notes=notes,
+            created_by=created_by,
+        )
+        return extract
 
     def get_turnaround_time(self):
         """Calculate current turnaround time in hours"""

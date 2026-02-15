@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Record Consent - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'compliance:consent_list' %}">Patient Consents</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Record New Consent</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Record New Consent</h1>
+        <p class="text-muted mb-0">Create a new consent record for a patient</p>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Patient and Protocol Selection -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-person-check me-2"></i> Patient and Protocol
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_patient" class="form-label">Patient <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.patient.errors %}is-invalid{% endif %}"
+                                        id="id_patient" name="patient" required>
+                                    <option value="">Select a patient...</option>
+                                    {% for patient in patients %}
+                                    <option value="{{ patient.pk }}" {% if form.patient.value == patient.pk|stringformat:"d" %}selected{% endif %}>
+                                        {{ patient }} ({{ patient.patient_id|default:patient.pk }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.patient.errors %}
+                                <div class="invalid-feedback">{{ form.patient.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_protocol" class="form-label">Consent Protocol <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.protocol.errors %}is-invalid{% endif %}"
+                                        id="id_protocol" name="protocol" required>
+                                    <option value="">Select a protocol...</option>
+                                    {% for protocol in active_protocols %}
+                                    <option value="{{ protocol.pk }}"
+                                            {% if form.protocol.value == protocol.pk|stringformat:"d" or selected_protocol == protocol.pk %}selected{% endif %}
+                                            data-requires-witness="{{ protocol.requires_witness|yesno:'true,false' }}"
+                                            data-requires-legal-rep="{{ protocol.requires_legal_representative|yesno:'true,false' }}"
+                                            data-minimum-age="{{ protocol.minimum_age }}">
+                                        {{ protocol.name }} (v{{ protocol.version }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.protocol.errors %}
+                                <div class="invalid-feedback">{{ form.protocol.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Only active protocols are shown.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Consent Information -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-clipboard-check me-2"></i> Consent Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_status" class="form-label">Initial Status <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.status.errors %}is-invalid{% endif %}"
+                                        id="id_status" name="status" required>
+                                    <option value="PENDING" {% if form.status.value == 'PENDING' %}selected{% endif %}>Pending</option>
+                                    <option value="CONSENTED" {% if form.status.value == 'CONSENTED' %}selected{% endif %}>Consented</option>
+                                    <option value="DECLINED" {% if form.status.value == 'DECLINED' %}selected{% endif %}>Declined</option>
+                                </select>
+                                {% if form.status.errors %}
+                                <div class="invalid-feedback">{{ form.status.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_consent_method" class="form-label">Consent Method <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.consent_method.errors %}is-invalid{% endif %}"
+                                        id="id_consent_method" name="consent_method" required>
+                                    <option value="IN_PERSON" {% if form.consent_method.value == 'IN_PERSON' %}selected{% endif %}>In Person</option>
+                                    <option value="ELECTRONIC" {% if form.consent_method.value == 'ELECTRONIC' %}selected{% endif %}>Electronic Signature</option>
+                                    <option value="PHONE" {% if form.consent_method.value == 'PHONE' %}selected{% endif %}>Phone Consent</option>
+                                    <option value="MAIL" {% if form.consent_method.value == 'MAIL' %}selected{% endif %}>Written Mail</option>
+                                    <option value="LAR" {% if form.consent_method.value == 'LAR' %}selected{% endif %}>Legally Authorized Representative</option>
+                                </select>
+                                {% if form.consent_method.errors %}
+                                <div class="invalid-feedback">{{ form.consent_method.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6" id="consent_date_group">
+                                <label for="id_consent_date" class="form-label">Consent Date</label>
+                                <input type="datetime-local" class="form-control {% if form.consent_date.errors %}is-invalid{% endif %}"
+                                       id="id_consent_date" name="consent_date"
+                                       value="{{ form.consent_date.value|date:'Y-m-d\TH:i'|default:'' }}">
+                                {% if form.consent_date.errors %}
+                                <div class="invalid-feedback">{{ form.consent_date.errors.0 }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">Required if status is Consented or Declined.</small>
+                            </div>
+                            <div class="col-12">
+                                <label for="id_notes" class="form-label">Notes</label>
+                                <textarea class="form-control {% if form.notes.errors %}is-invalid{% endif %}"
+                                          id="id_notes" name="notes" rows="3"
+                                          placeholder="Any additional notes about this consent...">{{ form.notes.value|default:'' }}</textarea>
+                                {% if form.notes.errors %}
+                                <div class="invalid-feedback">{{ form.notes.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Witness Information -->
+                <div class="card shadow-sm mb-4" id="witness_section">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-person-badge me-2"></i> Witness Information
+                        </h5>
+                        <span class="badge bg-info" id="witness_required_badge" style="display: none;">Required</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_witness_name" class="form-label">Witness Name</label>
+                                <input type="text" class="form-control {% if form.witness_name.errors %}is-invalid{% endif %}"
+                                       id="id_witness_name" name="witness_name"
+                                       value="{{ form.witness_name.value|default:'' }}"
+                                       placeholder="Full name of witness">
+                                {% if form.witness_name.errors %}
+                                <div class="invalid-feedback">{{ form.witness_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_witness_signature_date" class="form-label">Witness Signature Date</label>
+                                <input type="datetime-local" class="form-control {% if form.witness_signature_date.errors %}is-invalid{% endif %}"
+                                       id="id_witness_signature_date" name="witness_signature_date"
+                                       value="{{ form.witness_signature_date.value|date:'Y-m-d\TH:i'|default:'' }}">
+                                {% if form.witness_signature_date.errors %}
+                                <div class="invalid-feedback">{{ form.witness_signature_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legal Representative Information -->
+                <div class="card shadow-sm mb-4" id="representative_section">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-people me-2"></i> Legal Representative Information
+                        </h5>
+                        <span class="badge bg-secondary" id="representative_allowed_badge" style="display: none;">Allowed</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_representative_name" class="form-label">Representative Name</label>
+                                <input type="text" class="form-control {% if form.representative_name.errors %}is-invalid{% endif %}"
+                                       id="id_representative_name" name="representative_name"
+                                       value="{{ form.representative_name.value|default:'' }}"
+                                       placeholder="Full name of legal representative">
+                                {% if form.representative_name.errors %}
+                                <div class="invalid-feedback">{{ form.representative_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_representative_relationship" class="form-label">Relationship to Patient</label>
+                                <select class="form-select {% if form.representative_relationship.errors %}is-invalid{% endif %}"
+                                        id="id_representative_relationship" name="representative_relationship">
+                                    <option value="">Select relationship...</option>
+                                    <option value="Parent" {% if form.representative_relationship.value == 'Parent' %}selected{% endif %}>Parent</option>
+                                    <option value="Guardian" {% if form.representative_relationship.value == 'Guardian' %}selected{% endif %}>Guardian</option>
+                                    <option value="Spouse" {% if form.representative_relationship.value == 'Spouse' %}selected{% endif %}>Spouse</option>
+                                    <option value="Adult Child" {% if form.representative_relationship.value == 'Adult Child' %}selected{% endif %}>Adult Child</option>
+                                    <option value="Power of Attorney" {% if form.representative_relationship.value == 'Power of Attorney' %}selected{% endif %}>Power of Attorney</option>
+                                    <option value="Healthcare Proxy" {% if form.representative_relationship.value == 'Healthcare Proxy' %}selected{% endif %}>Healthcare Proxy</option>
+                                    <option value="Other" {% if form.representative_relationship.value == 'Other' %}selected{% endif %}>Other</option>
+                                </select>
+                                {% if form.representative_relationship.errors %}
+                                <div class="invalid-feedback">{{ form.representative_relationship.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document Upload -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-earmark-pdf me-2"></i> Signed Document
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-0">
+                            <label for="id_signed_document" class="form-label">Upload Signed Consent Form</label>
+                            <input type="file" class="form-control {% if form.signed_document.errors %}is-invalid{% endif %}"
+                                   id="id_signed_document" name="signed_document" accept=".pdf,.jpg,.jpeg,.png">
+                            {% if form.signed_document.errors %}
+                            <div class="invalid-feedback">{{ form.signed_document.errors.0 }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">Upload a scanned copy or photo of the signed consent form. Accepted formats: PDF, JPG, PNG. Max size: 10MB.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Protocol Requirements Info -->
+                <div class="card shadow-sm mb-4" id="protocol_info_card" style="display: none;">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-info-circle me-2"></i> Protocol Requirements
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="protocol_requirements">
+                            <p class="text-muted mb-0">Select a protocol to see its requirements.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help Card -->
+                <div class="card shadow-sm mb-4 bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-question-circle me-2"></i> Help
+                        </h6>
+                        <ul class="small mb-0 ps-3">
+                            <li class="mb-2"><strong>Pending:</strong> Consent has been initiated but not yet obtained.</li>
+                            <li class="mb-2"><strong>Consented:</strong> Patient has provided consent.</li>
+                            <li class="mb-2"><strong>Declined:</strong> Patient has declined to consent.</li>
+                            <li class="mb-2"><strong>Witness:</strong> Some protocols require a witness signature.</li>
+                            <li><strong>Legal Rep:</strong> For minors or incapacitated patients.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="card shadow-sm">
+                    <div class="card-body d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-lg me-2"></i> Save Consent Record
+                        </button>
+                        <a href="{% url 'compliance:consent_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-2"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Errors -->
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger mt-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {% for error in form.non_field_errors %}
+                {{ error }}{% if not forloop.last %}<br>{% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const protocolSelect = document.getElementById('id_protocol');
+    const statusSelect = document.getElementById('id_status');
+    const consentDateGroup = document.getElementById('consent_date_group');
+    const witnessSection = document.getElementById('witness_section');
+    const representativeSection = document.getElementById('representative_section');
+    const witnessRequiredBadge = document.getElementById('witness_required_badge');
+    const representativeAllowedBadge = document.getElementById('representative_allowed_badge');
+    const protocolInfoCard = document.getElementById('protocol_info_card');
+    const protocolRequirements = document.getElementById('protocol_requirements');
+
+    function updateProtocolInfo() {
+        const selectedOption = protocolSelect.options[protocolSelect.selectedIndex];
+
+        if (selectedOption.value) {
+            const requiresWitness = selectedOption.dataset.requiresWitness === 'true';
+            const requiresLegalRep = selectedOption.dataset.requiresLegalRep === 'true';
+            const minimumAge = selectedOption.dataset.minimumAge;
+
+            // Show protocol info card
+            protocolInfoCard.style.display = 'block';
+
+            // Update requirements display
+            let requirementsHtml = '<ul class="list-unstyled mb-0">';
+            requirementsHtml += '<li class="mb-2">' + (requiresWitness ?
+                '<i class="bi bi-check-circle-fill text-success me-2"></i>' :
+                '<i class="bi bi-x-circle text-muted me-2"></i>') +
+                'Witness Required: ' + (requiresWitness ? 'Yes' : 'No') + '</li>';
+            requirementsHtml += '<li class="mb-2">' + (requiresLegalRep ?
+                '<i class="bi bi-check-circle-fill text-success me-2"></i>' :
+                '<i class="bi bi-x-circle text-muted me-2"></i>') +
+                'Legal Representative Allowed: ' + (requiresLegalRep ? 'Yes' : 'No') + '</li>';
+            requirementsHtml += '<li><i class="bi bi-person-fill text-primary me-2"></i>Minimum Age: ' + minimumAge + ' years</li>';
+            requirementsHtml += '</ul>';
+            protocolRequirements.innerHTML = requirementsHtml;
+
+            // Show/hide badges
+            witnessRequiredBadge.style.display = requiresWitness ? 'inline-block' : 'none';
+            representativeAllowedBadge.style.display = requiresLegalRep ? 'inline-block' : 'none';
+        } else {
+            protocolInfoCard.style.display = 'none';
+            witnessRequiredBadge.style.display = 'none';
+            representativeAllowedBadge.style.display = 'none';
+        }
+    }
+
+    function updateConsentDateVisibility() {
+        const status = statusSelect.value;
+        const consentDateInput = document.getElementById('id_consent_date');
+
+        if (status === 'CONSENTED' || status === 'DECLINED') {
+            consentDateInput.required = true;
+        } else {
+            consentDateInput.required = false;
+        }
+    }
+
+    // Initial update
+    updateProtocolInfo();
+    updateConsentDateVisibility();
+
+    // Event listeners
+    protocolSelect.addEventListener('change', updateProtocolInfo);
+    statusSelect.addEventListener('change', updateConsentDateVisibility);
+
+    // Set current datetime as default for consent date if status is CONSENTED
+    statusSelect.addEventListener('change', function() {
+        const consentDateInput = document.getElementById('id_consent_date');
+        if (this.value === 'CONSENTED' && !consentDateInput.value) {
+            const now = new Date();
+            const localDateTime = now.toISOString().slice(0, 16);
+            consentDateInput.value = localDateTime;
+        }
+    });
+});
+</script>
+{% endblock %}

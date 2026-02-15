@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Worklist Exports{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Worklist Exports</h1>
+        <a href="{% url 'instruments:worklist_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Create Worklist
+        </a>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="filterConnection" class="form-label">Connection</label>
+                    <select class="form-select" id="filterConnection" name="connection">
+                        <option value="">All Connections</option>
+                        {% for conn in connections %}
+                        <option value="{{ conn.pk }}" {% if request.GET.connection == conn.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ conn.instrument.name }} - {{ conn.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="filterStatus" class="form-label">Status</label>
+                    <select class="form-select" id="filterStatus" name="status">
+                        <option value="">All Status</option>
+                        <option value="PENDING" {% if request.GET.status == 'PENDING' %}selected{% endif %}>Pending</option>
+                        <option value="SENT" {% if request.GET.status == 'SENT' %}selected{% endif %}>Sent</option>
+                        <option value="ACKNOWLEDGED" {% if request.GET.status == 'ACKNOWLEDGED' %}selected{% endif %}>Acknowledged</option>
+                        <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                        <option value="ERROR" {% if request.GET.status == 'ERROR' %}selected{% endif %}>Error</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="filterDateFrom" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="filterDateFrom" name="date_from"
+                           value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="filterDateTo" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="filterDateTo" name="date_to"
+                           value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search me-1"></i> Filter
+                    </button>
+                    <a href="{% url 'instruments:worklist_list' %}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Worklist Table -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <i class="bi bi-list-task me-2"></i>
+            {{ worklists|length }} Worklist Export{% if worklists|length != 1 %}s{% endif %}
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Connection</th>
+                        <th>Samples</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Sent</th>
+                        <th>Completed</th>
+                        <th>Created By</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for worklist in worklists %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'instruments:worklist_detail' worklist.pk %}" class="fw-medium">
+                                #{{ worklist.pk }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% url 'instruments:connection_detail' worklist.connection.pk %}" class="text-decoration-none">
+                                {{ worklist.connection.instrument.name }}
+                            </a>
+                            <br>
+                            <small class="text-muted">{{ worklist.connection.name }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                {{ worklist.samples|length }} sample{% if worklist.samples|length != 1 %}s{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if worklist.status == 'PENDING' %}
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-hourglass-split me-1"></i>Pending
+                            </span>
+                            {% elif worklist.status == 'SENT' %}
+                            <span class="badge bg-info">
+                                <i class="bi bi-send me-1"></i>Sent
+                            </span>
+                            {% elif worklist.status == 'ACKNOWLEDGED' %}
+                            <span class="badge bg-primary">
+                                <i class="bi bi-check me-1"></i>Acknowledged
+                            </span>
+                            {% elif worklist.status == 'PARTIAL' %}
+                            <span class="badge bg-secondary">
+                                <i class="bi bi-pie-chart me-1"></i>Partial
+                            </span>
+                            {% elif worklist.status == 'COMPLETED' %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-check-circle me-1"></i>Completed
+                            </span>
+                            {% elif worklist.status == 'ERROR' %}
+                            <span class="badge bg-danger" title="{{ worklist.error_message }}">
+                                <i class="bi bi-exclamation-circle me-1"></i>Error
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ worklist.created_at|date:"Y-m-d H:i" }}
+                            <br>
+                            <small class="text-muted">{{ worklist.created_at|timesince }} ago</small>
+                        </td>
+                        <td>
+                            {% if worklist.sent_at %}
+                            {{ worklist.sent_at|date:"H:i:s" }}
+                            {% else %}
+                            <span class="text-muted">--</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if worklist.completed_at %}
+                            {{ worklist.completed_at|date:"H:i:s" }}
+                            {% else %}
+                            <span class="text-muted">--</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ worklist.created_by|default:"--" }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'instruments:worklist_detail' worklist.pk %}"
+                                   class="btn btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if worklist.status == 'PENDING' %}
+                                <button type="button" class="btn btn-outline-success btn-send"
+                                        data-worklist-id="{{ worklist.pk }}" title="Send Now">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-cancel"
+                                        data-worklist-id="{{ worklist.pk }}" title="Cancel">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                                {% elif worklist.status == 'ERROR' %}
+                                <button type="button" class="btn btn-outline-warning btn-retry"
+                                        data-worklist-id="{{ worklist.pk }}" title="Retry">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-list-task display-4 d-block mb-3"></i>
+                            No worklist exports found.
+                            <br>
+                            <a href="{% url 'instruments:worklist_create' %}" class="btn btn-primary mt-3">
+                                Create Worklist
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-light">
+            <nav aria-label="Worklist pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Statistics -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="mb-0">{{ stats.pending|default:0 }}</h3>
+                    <small class="text-muted">Pending</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="mb-0 text-info">{{ stats.sent|default:0 }}</h3>
+                    <small class="text-muted">Sent</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="mb-0 text-success">{{ stats.completed|default:0 }}</h3>
+                    <small class="text-muted">Completed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="mb-0 text-danger">{{ stats.errors|default:0 }}</h3>
+                    <small class="text-muted">Errors</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Send worklist
+    document.querySelectorAll('.btn-send').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const worklistId = this.dataset.worklistId;
+            if (confirm('Send this worklist now?')) {
+                fetch(`/instruments/api/worklists/${worklistId}/send/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          location.reload();
+                      } else {
+                          alert('Failed to send worklist: ' + data.error);
+                      }
+                  });
+            }
+        });
+    });
+
+    // Cancel worklist
+    document.querySelectorAll('.btn-cancel').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const worklistId = this.dataset.worklistId;
+            if (confirm('Cancel this worklist?')) {
+                fetch(`/instruments/api/worklists/${worklistId}/cancel/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          location.reload();
+                      } else {
+                          alert('Failed to cancel worklist: ' + data.error);
+                      }
+                  });
+            }
+        });
+    });
+
+    // Retry worklist
+    document.querySelectorAll('.btn-retry').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const worklistId = this.dataset.worklistId;
+            if (confirm('Retry sending this worklist?')) {
+                fetch(`/instruments/api/worklists/${worklistId}/retry/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.success) {
+                          location.reload();
+                      } else {
+                          alert('Failed to retry worklist: ' + data.error);
+                      }
+                  });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

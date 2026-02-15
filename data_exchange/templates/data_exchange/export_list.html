@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1">Data Export</h1>
+            <p class="text-muted mb-0">Export data in various formats or manage export templates</p>
+        </div>
+        <div>
+            <a href="{% url 'data_exchange:export_template_create' %}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-file-plus me-2"></i>New Template
+            </a>
+            <a href="{% url 'data_exchange:export_create' %}" class="btn btn-primary">
+                <i class="bi bi-download me-2"></i>New Export
+            </a>
+        </div>
+    </div>
+
+    <!-- Export Templates Section -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-file-earmark-code me-2"></i>Export Templates
+            </h5>
+            <a href="{% url 'data_exchange:export_template_list' %}" class="btn btn-sm btn-outline-secondary">
+                View All Templates
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                {% for template in export_templates %}
+                <div class="col-md-4">
+                    <div class="card h-100 border">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start justify-content-between mb-3">
+                                <div>
+                                    <h6 class="card-title mb-1">{{ template.name }}</h6>
+                                    <span class="badge bg-info text-dark">{{ template.get_data_type_display }}</span>
+                                    <span class="badge bg-secondary">{{ template.output_format }}</span>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'data_exchange:export_template_edit' template.id %}">
+                                                <i class="bi bi-pencil me-2"></i>Edit
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'data_exchange:export_create' %}?template={{ template.id }}">
+                                                <i class="bi bi-download me-2"></i>Export Now
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <button class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteTemplateModal{{ template.id }}">
+                                                <i class="bi bi-trash me-2"></i>Delete
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            {% if template.description %}
+                            <p class="card-text small text-muted mb-3">{{ template.description|truncatewords:15 }}</p>
+                            {% endif %}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    {{ template.included_fields|length }} fields
+                                </small>
+                                <a href="{% url 'data_exchange:export_create' %}?template={{ template.id }}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-download me-1"></i>Export
+                                </a>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light small text-muted">
+                            {% if template.is_public %}
+                                <i class="bi bi-globe me-1"></i>Public
+                            {% else %}
+                                <i class="bi bi-lock me-1"></i>Private
+                            {% endif %}
+                            | Created {{ template.created_at|date:"M d, Y" }}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-file-earmark-code fs-1 d-block mb-3"></i>
+                        <p class="mb-3">No export templates found</p>
+                        <a href="{% url 'data_exchange:export_template_create' %}" class="btn btn-primary">
+                            Create Your First Template
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Exports Section -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-clock-history me-2"></i>Recent Exports
+            </h5>
+            <div class="btn-group btn-group-sm" role="group">
+                <input type="radio" class="btn-check" name="exportFilter" id="filterAllExports" autocomplete="off" checked>
+                <label class="btn btn-outline-secondary" for="filterAllExports">All</label>
+
+                <input type="radio" class="btn-check" name="exportFilter" id="filterCompletedExports" autocomplete="off">
+                <label class="btn btn-outline-success" for="filterCompletedExports">Completed</label>
+
+                <input type="radio" class="btn-check" name="exportFilter" id="filterFailedExports" autocomplete="off">
+                <label class="btn btn-outline-danger" for="filterFailedExports">Failed</label>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Export</th>
+                            <th scope="col">Data Type</th>
+                            <th scope="col">Format</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Records</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Created By</th>
+                            <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for export in export_jobs %}
+                        <tr class="export-row" data-status="{{ export.status }}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if export.output_format == 'CSV' %}
+                                        <i class="bi bi-filetype-csv text-success me-2 fs-5"></i>
+                                    {% elif export.output_format == 'XLSX' %}
+                                        <i class="bi bi-file-earmark-excel text-success me-2 fs-5"></i>
+                                    {% elif export.output_format == 'JSON' %}
+                                        <i class="bi bi-filetype-json text-warning me-2 fs-5"></i>
+                                    {% elif export.output_format == 'PDF' %}
+                                        <i class="bi bi-file-earmark-pdf text-danger me-2 fs-5"></i>
+                                    {% else %}
+                                        <i class="bi bi-file-earmark me-2 fs-5"></i>
+                                    {% endif %}
+                                    <div>
+                                        {% if export.template %}
+                                            <div class="fw-medium">{{ export.template.name }}</div>
+                                            <small class="text-muted">Template-based export</small>
+                                        {% else %}
+                                            <div class="fw-medium">Custom Export</div>
+                                            <small class="text-muted">Ad-hoc export</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-info text-dark">{{ export.data_type }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ export.output_format }}</span>
+                            </td>
+                            <td>
+                                {% if export.status == 'COMPLETED' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>Completed
+                                    </span>
+                                {% elif export.status == 'FAILED' %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle me-1"></i>Failed
+                                    </span>
+                                {% elif export.status == 'PROCESSING' %}
+                                    <span class="badge bg-warning text-dark">
+                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                        Processing
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">
+                                        <i class="bi bi-clock me-1"></i>Pending
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="fw-medium">{{ export.record_count }}</span>
+                            </td>
+                            <td>
+                                <div>{{ export.created_at|date:"M d, Y" }}</div>
+                                <small class="text-muted">{{ export.created_at|time:"H:i" }}</small>
+                            </td>
+                            <td>
+                                {% if export.created_by %}
+                                    {{ export.created_by.get_full_name|default:export.created_by.username }}
+                                {% else %}
+                                    <span class="text-muted">System</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if export.status == 'COMPLETED' and export.output_file %}
+                                    <a href="{{ export.output_file.url }}"
+                                       class="btn btn-sm btn-success"
+                                       download
+                                       title="Download">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                {% elif export.status == 'FAILED' %}
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#errorModal{{ export.id }}"
+                                            title="View Error">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                    </button>
+                                {% elif export.status == 'PROCESSING' %}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                        <span class="spinner-border spinner-border-sm"></span>
+                                    </button>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                    <p class="mb-0">No exports found</p>
+                                    <a href="{% url 'data_exchange:export_create' %}" class="btn btn-primary mt-3">
+                                        Create Your First Export
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white">
+            <nav aria-label="Export jobs pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Template Modals -->
+{% for template in export_templates %}
+<div class="modal fade" id="deleteTemplateModal{{ template.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the template <strong>{{ template.name }}</strong>?</p>
+                <p class="text-muted mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'data_exchange:export_template_delete' template.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Error Modals -->
+{% for export in export_jobs %}
+{% if export.status == 'FAILED' %}
+<div class="modal fade" id="errorModal{{ export.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Export Error</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2"><strong>Export ID:</strong> <code>{{ export.id }}</code></p>
+                <p class="mb-2"><strong>Created:</strong> {{ export.created_at|date:"M d, Y H:i" }}</p>
+                <hr>
+                <p class="mb-1"><strong>Error Message:</strong></p>
+                <div class="alert alert-danger">
+                    {{ export.error_message|default:"Unknown error occurred" }}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{% url 'data_exchange:export_create' %}?retry={{ export.id }}" class="btn btn-primary">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<script>
+// Filter exports by status
+document.querySelectorAll('input[name="exportFilter"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        const filter = this.id.replace('filter', '').replace('Exports', '').toUpperCase();
+        const rows = document.querySelectorAll('.export-row');
+
+        rows.forEach(function(row) {
+            if (filter === 'ALL' || row.dataset.status === filter) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Auto-refresh for processing exports
+document.addEventListener('DOMContentLoaded', function() {
+    const processingExports = document.querySelectorAll('.export-row[data-status="PROCESSING"]');
+    if (processingExports.length > 0) {
+        setTimeout(function() {
+            location.reload();
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

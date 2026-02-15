@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add Consent - {{ patient }} - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'lab_management:patient_list' %}">Patients</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'lab_management:patient_detail' patient.pk %}">{{ patient }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Add Consent</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Add Consent for {{ patient }}</h1>
+        <p class="text-muted mb-0">Record a new consent for this patient</p>
+    </div>
+
+    <!-- Patient Info Card -->
+    <div class="card shadow-sm mb-4 border-primary">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="bi bi-person-fill fs-3"></i>
+                    </div>
+                </div>
+                <div class="col">
+                    <h5 class="mb-1">{{ patient }}</h5>
+                    <p class="text-muted mb-0">
+                        Patient ID: {{ patient.patient_id|default:patient.pk }}
+                        {% if patient.date_of_birth %}
+                        | DOB: {{ patient.date_of_birth|date:"M d, Y" }}
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'compliance:patient_consent_history' patient.pk %}" class="btn btn-outline-primary">
+                        <i class="bi bi-clock-history me-1"></i> View Consent History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Consents Warning -->
+    {% if existing_consents %}
+    <div class="alert alert-info d-flex align-items-start mb-4" role="alert">
+        <i class="bi bi-info-circle-fill fs-4 me-3 mt-1"></i>
+        <div>
+            <strong>Existing Consents</strong>
+            <p class="mb-2">This patient already has the following active consents:</p>
+            <ul class="mb-0">
+                {% for consent in existing_consents %}
+                <li>
+                    <a href="{% url 'compliance:consent_detail' consent.pk %}">
+                        {{ consent.protocol.name }} (v{{ consent.protocol.version }})
+                    </a>
+                    - {{ consent.get_status_display }}
+                    {% if consent.consent_date %}({{ consent.consent_date|date:"M d, Y" }}){% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="patient" value="{{ patient.pk }}">
+
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Protocol Selection -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-text me-2"></i> Select Consent Protocol
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if active_protocols %}
+                        <div class="row g-3">
+                            {% for protocol in active_protocols %}
+                            <div class="col-md-6">
+                                <div class="form-check card h-100 {% if selected_protocol == protocol.pk %}border-primary{% endif %}">
+                                    <div class="card-body">
+                                        <input class="form-check-input" type="radio" name="protocol"
+                                               id="protocol_{{ protocol.pk }}" value="{{ protocol.pk }}"
+                                               {% if selected_protocol == protocol.pk %}checked{% endif %}
+                                               data-requires-witness="{{ protocol.requires_witness|yesno:'true,false' }}"
+                                               data-requires-legal-rep="{{ protocol.requires_legal_representative|yesno:'true,false' }}"
+                                               data-minimum-age="{{ protocol.minimum_age }}">
+                                        <label class="form-check-label d-block" for="protocol_{{ protocol.pk }}">
+                                            <strong>{{ protocol.name }}</strong>
+                                            <span class="badge bg-light text-dark border ms-1">v{{ protocol.version }}</span>
+                                            <br>
+                                            <span class="badge
+                                                {% if protocol.protocol_type == 'GENERAL' %}bg-primary
+                                                {% elif protocol.protocol_type == 'GENETIC' %}bg-info
+                                                {% elif protocol.protocol_type == 'BIOBANK' %}bg-success
+                                                {% elif protocol.protocol_type == 'CLINICAL_TRIAL' %}bg-warning text-dark
+                                                {% elif protocol.protocol_type == 'DATA_SHARING' %}bg-secondary
+                                                {% elif protocol.protocol_type == 'PEDIATRIC' %}bg-pink
+                                                {% elif protocol.protocol_type == 'EMERGENCY' %}bg-danger
+                                                {% else %}bg-dark
+                                                {% endif %} mt-2">
+                                                {{ protocol.get_protocol_type_display }}
+                                            </span>
+                                            {% if protocol.requires_witness %}
+                                            <span class="badge bg-outline-info border text-info mt-2">
+                                                <i class="bi bi-person-check"></i> Witness
+                                            </span>
+                                            {% endif %}
+                                        </label>
+                                        <small class="text-muted d-block mt-2">
+                                            {% if protocol.irb_number %}IRB: {{ protocol.irb_number }}{% endif %}
+                                            {% if protocol.irb_expiration_date %}
+                                                | Expires: {{ protocol.irb_expiration_date|date:"M d, Y" }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            No active consent protocols available. Please create a protocol first.
+                        </div>
+                        {% endif %}
+                        {% if form.protocol.errors %}
+                        <div class="invalid-feedback d-block mt-2">{{ form.protocol.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Consent Information -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-clipboard-check me-2"></i> Consent Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_status" class="form-label">Initial Status <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.status.errors %}is-invalid{% endif %}"
+                                        id="id_status" name="status" required>
+                                    <option value="PENDING" {% if form.status.value == 'PENDING' %}selected{% endif %}>Pending - To be obtained</option>
+                                    <option value="CONSENTED" {% if form.status.value == 'CONSENTED' %}selected{% endif %}>Consented - Already obtained</option>
+                                    <option value="DECLINED" {% if form.status.value == 'DECLINED' %}selected{% endif %}>Declined - Patient refused</option>
+                                </select>
+                                {% if form.status.errors %}
+                                <div class="invalid-feedback">{{ form.status.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_consent_method" class="form-label">Consent Method <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.consent_method.errors %}is-invalid{% endif %}"
+                                        id="id_consent_method" name="consent_method" required>
+                                    <option value="IN_PERSON" {% if form.consent_method.value == 'IN_PERSON' %}selected{% endif %}>In Person</option>
+                                    <option value="ELECTRONIC" {% if form.consent_method.value == 'ELECTRONIC' %}selected{% endif %}>Electronic Signature</option>
+                                    <option value="PHONE" {% if form.consent_method.value == 'PHONE' %}selected{% endif %}>Phone Consent</option>
+                                    <option value="MAIL" {% if form.consent_method.value == 'MAIL' %}selected{% endif %}>Written Mail</option>
+                                    <option value="LAR" {% if form.consent_method.value == 'LAR' %}selected{% endif %}>Legally Authorized Representative</option>
+                                </select>
+                                {% if form.consent_method.errors %}
+                                <div class="invalid-feedback">{{ form.consent_method.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6" id="consent_date_group">
+                                <label for="id_consent_date" class="form-label">Consent Date</label>
+                                <input type="datetime-local" class="form-control {% if form.consent_date.errors %}is-invalid{% endif %}"
+                                       id="id_consent_date" name="consent_date"
+                                       value="{{ form.consent_date.value|date:'Y-m-d\TH:i'|default:'' }}">
+                                {% if form.consent_date.errors %}
+                                <div class="invalid-feedback">{{ form.consent_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label for="id_notes" class="form-label">Notes</label>
+                                <textarea class="form-control {% if form.notes.errors %}is-invalid{% endif %}"
+                                          id="id_notes" name="notes" rows="3">{{ form.notes.value|default:'' }}</textarea>
+                                {% if form.notes.errors %}
+                                <div class="invalid-feedback">{{ form.notes.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Witness Information -->
+                <div class="card shadow-sm mb-4" id="witness_section">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-person-badge me-2"></i> Witness Information
+                        </h5>
+                        <span class="badge bg-info" id="witness_required_badge" style="display: none;">Required for selected protocol</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_witness_name" class="form-label">Witness Name</label>
+                                <input type="text" class="form-control {% if form.witness_name.errors %}is-invalid{% endif %}"
+                                       id="id_witness_name" name="witness_name"
+                                       value="{{ form.witness_name.value|default:'' }}">
+                                {% if form.witness_name.errors %}
+                                <div class="invalid-feedback">{{ form.witness_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_witness_signature_date" class="form-label">Witness Signature Date</label>
+                                <input type="datetime-local" class="form-control {% if form.witness_signature_date.errors %}is-invalid{% endif %}"
+                                       id="id_witness_signature_date" name="witness_signature_date"
+                                       value="{{ form.witness_signature_date.value|date:'Y-m-d\TH:i'|default:'' }}">
+                                {% if form.witness_signature_date.errors %}
+                                <div class="invalid-feedback">{{ form.witness_signature_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legal Representative Information -->
+                <div class="card shadow-sm mb-4" id="representative_section">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-people me-2"></i> Legal Representative
+                        </h5>
+                        <span class="badge bg-secondary" id="representative_allowed_badge" style="display: none;">Allowed</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="id_representative_name" class="form-label">Representative Name</label>
+                                <input type="text" class="form-control {% if form.representative_name.errors %}is-invalid{% endif %}"
+                                       id="id_representative_name" name="representative_name"
+                                       value="{{ form.representative_name.value|default:'' }}">
+                                {% if form.representative_name.errors %}
+                                <div class="invalid-feedback">{{ form.representative_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_representative_relationship" class="form-label">Relationship to Patient</label>
+                                <select class="form-select {% if form.representative_relationship.errors %}is-invalid{% endif %}"
+                                        id="id_representative_relationship" name="representative_relationship">
+                                    <option value="">Select relationship...</option>
+                                    <option value="Parent" {% if form.representative_relationship.value == 'Parent' %}selected{% endif %}>Parent</option>
+                                    <option value="Guardian" {% if form.representative_relationship.value == 'Guardian' %}selected{% endif %}>Guardian</option>
+                                    <option value="Spouse" {% if form.representative_relationship.value == 'Spouse' %}selected{% endif %}>Spouse</option>
+                                    <option value="Adult Child" {% if form.representative_relationship.value == 'Adult Child' %}selected{% endif %}>Adult Child</option>
+                                    <option value="Power of Attorney" {% if form.representative_relationship.value == 'Power of Attorney' %}selected{% endif %}>Power of Attorney</option>
+                                    <option value="Healthcare Proxy" {% if form.representative_relationship.value == 'Healthcare Proxy' %}selected{% endif %}>Healthcare Proxy</option>
+                                    <option value="Other" {% if form.representative_relationship.value == 'Other' %}selected{% endif %}>Other</option>
+                                </select>
+                                {% if form.representative_relationship.errors %}
+                                <div class="invalid-feedback">{{ form.representative_relationship.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document Upload -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-earmark-pdf me-2"></i> Signed Document
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <input type="file" class="form-control {% if form.signed_document.errors %}is-invalid{% endif %}"
+                               id="id_signed_document" name="signed_document" accept=".pdf,.jpg,.jpeg,.png">
+                        {% if form.signed_document.errors %}
+                        <div class="invalid-feedback">{{ form.signed_document.errors.0 }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">Upload a scanned copy of the signed consent form (PDF, JPG, PNG).</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Form Actions -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" {% if not active_protocols %}disabled{% endif %}>
+                            <i class="bi bi-check-lg me-2"></i> Save Consent
+                        </button>
+                        <a href="{% url 'lab_management:patient_detail' patient.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-2"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-link-45deg me-2"></i> Quick Links
+                        </h5>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <a href="{% url 'compliance:patient_consent_history' patient.pk %}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-clock-history me-2"></i> View Patient Consent History
+                        </a>
+                        <a href="{% url 'compliance:protocol_list' %}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-file-text me-2"></i> View All Protocols
+                        </a>
+                        <a href="{% url 'compliance:consent_list' %}" class="list-group-item list-group-item-action">
+                            <i class="bi bi-clipboard-check me-2"></i> View All Consents
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Errors -->
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger mt-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            {% for error in form.non_field_errors %}
+                {{ error }}{% if not forloop.last %}<br>{% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const protocolRadios = document.querySelectorAll('input[name="protocol"]');
+    const witnessRequiredBadge = document.getElementById('witness_required_badge');
+    const representativeAllowedBadge = document.getElementById('representative_allowed_badge');
+    const statusSelect = document.getElementById('id_status');
+    const consentDateInput = document.getElementById('id_consent_date');
+
+    function updateProtocolInfo() {
+        const selectedRadio = document.querySelector('input[name="protocol"]:checked');
+
+        if (selectedRadio) {
+            const requiresWitness = selectedRadio.dataset.requiresWitness === 'true';
+            const requiresLegalRep = selectedRadio.dataset.requiresLegalRep === 'true';
+
+            // Update badges
+            witnessRequiredBadge.style.display = requiresWitness ? 'inline-block' : 'none';
+            representativeAllowedBadge.style.display = requiresLegalRep ? 'inline-block' : 'none';
+
+            // Highlight selected card
+            document.querySelectorAll('.form-check.card').forEach(card => {
+                card.classList.remove('border-primary');
+            });
+            selectedRadio.closest('.form-check.card').classList.add('border-primary');
+        } else {
+            witnessRequiredBadge.style.display = 'none';
+            representativeAllowedBadge.style.display = 'none';
+        }
+    }
+
+    function updateConsentDate() {
+        if (statusSelect.value === 'CONSENTED' && !consentDateInput.value) {
+            const now = new Date();
+            const localDateTime = now.toISOString().slice(0, 16);
+            consentDateInput.value = localDateTime;
+        }
+    }
+
+    // Initial update
+    updateProtocolInfo();
+
+    // Event listeners
+    protocolRadios.forEach(radio => {
+        radio.addEventListener('change', updateProtocolInfo);
+    });
+
+    statusSelect.addEventListener('change', updateConsentDate);
+});
+</script>
+{% endblock %}

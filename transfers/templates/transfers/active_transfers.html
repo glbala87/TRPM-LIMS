@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Active Transfers Dashboard - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">Active Transfers Dashboard</h1>
+                    <p class="text-muted mb-0">Monitor all pending and in-transit transfers</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary me-2" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <a href="{% url 'transfers:transfer_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> New Transfer
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-warning bg-opacity-10 border-warning h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Pending Dispatch</h6>
+                            <h2 class="mb-0">{{ stats.pending }}</h2>
+                        </div>
+                        <div class="fs-1 text-warning opacity-50">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                    </div>
+                    <a href="{% url 'transfers:transfer_list' %}?status=PENDING" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info bg-opacity-10 border-info h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">In Transit</h6>
+                            <h2 class="mb-0">{{ stats.in_transit }}</h2>
+                        </div>
+                        <div class="fs-1 text-info opacity-50">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                    </div>
+                    <a href="{% url 'transfers:transfer_list' %}?status=IN_TRANSIT" class="stretched-link"></a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger bg-opacity-10 border-danger h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Overdue</h6>
+                            <h2 class="mb-0">{{ stats.overdue }}</h2>
+                        </div>
+                        <div class="fs-1 text-danger opacity-50">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary bg-opacity-10 border-primary h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Arriving Today</h6>
+                            <h2 class="mb-0">{{ stats.arriving_today }}</h2>
+                        </div>
+                        <div class="fs-1 text-primary opacity-50">
+                            <i class="bi bi-calendar-check"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Overdue Transfers Alert -->
+        {% if overdue_transfers %}
+        <div class="col-12 mb-4">
+            <div class="alert alert-danger">
+                <h5 class="alert-heading">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Overdue Transfers Requiring Attention
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-borderless mb-0">
+                        <thead>
+                            <tr>
+                                <th>Transfer #</th>
+                                <th>Route</th>
+                                <th>Expected</th>
+                                <th>Days Overdue</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transfer in overdue_transfers %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="text-danger fw-bold">
+                                        {{ transfer.transfer_number }}
+                                    </a>
+                                </td>
+                                <td>{{ transfer.source_location.name }} <i class="bi bi-arrow-right"></i> {{ transfer.destination_location.name }}</td>
+                                <td>{{ transfer.expected_arrival_date|date:"M d" }}</td>
+                                <td><span class="badge bg-danger">{{ transfer.days_overdue }} days</span></td>
+                                <td>
+                                    <a href="{% url 'transfers:transfer_receive' transfer.pk %}" class="btn btn-sm btn-danger">
+                                        Receive Now
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Pending Transfers -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-hourglass-split text-warning"></i> Pending Dispatch
+                    </h5>
+                    <span class="badge bg-warning text-dark">{{ pending_transfers|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                        {% for transfer in pending_transfers %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="text-decoration-none">
+                                            {{ transfer.transfer_number }}
+                                        </a>
+                                    </h6>
+                                    <p class="mb-1 text-muted small">
+                                        <i class="bi bi-geo-alt"></i> {{ transfer.source_location.name }}
+                                        <i class="bi bi-arrow-right mx-1"></i>
+                                        <i class="bi bi-geo-alt-fill"></i> {{ transfer.destination_location.name }}
+                                    </p>
+                                    <small class="text-muted">
+                                        {{ transfer.items.count }} items | Created {{ transfer.created_at|timesince }} ago
+                                    </small>
+                                </div>
+                                <div>
+                                    <a href="{% url 'transfers:transfer_dispatch' transfer.pk %}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-send"></i> Dispatch
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item text-center py-5 text-muted">
+                            <i class="bi bi-check-circle display-6"></i>
+                            <p class="mt-2 mb-0">No pending transfers</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- In Transit Transfers -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info bg-opacity-10 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-truck text-info"></i> In Transit
+                    </h5>
+                    <span class="badge bg-info">{{ in_transit_transfers|length }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                        {% for transfer in in_transit_transfers %}
+                        <div class="list-group-item {% if transfer.is_overdue %}list-group-item-danger{% endif %}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="text-decoration-none">
+                                            {{ transfer.transfer_number }}
+                                        </a>
+                                        {% if transfer.is_overdue %}
+                                        <span class="badge bg-danger ms-1">Overdue</span>
+                                        {% endif %}
+                                    </h6>
+                                    <p class="mb-1 text-muted small">
+                                        <i class="bi bi-geo-alt"></i> {{ transfer.source_location.name }}
+                                        <i class="bi bi-arrow-right mx-1"></i>
+                                        <i class="bi bi-geo-alt-fill"></i> {{ transfer.destination_location.name }}
+                                    </p>
+                                    <small>
+                                        {% if transfer.tracking_number %}
+                                        <span class="text-muted">Tracking: {{ transfer.tracking_number }}</span>
+                                        {% endif %}
+                                        {% if transfer.expected_arrival_date %}
+                                        <br><span class="{% if transfer.is_overdue %}text-danger{% else %}text-muted{% endif %}">
+                                            Expected: {{ transfer.expected_arrival_date|date:"M d, Y" }}
+                                        </span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div>
+                                    <a href="{% url 'transfers:transfer_receive' transfer.pk %}" class="btn btn-sm btn-success">
+                                        <i class="bi bi-box-arrow-in-down"></i> Receive
+                                    </a>
+                                </div>
+                            </div>
+
+                            <!-- Progress indicator -->
+                            {% if transfer.dispatched_at and transfer.expected_arrival_date %}
+                            <div class="mt-2">
+                                <div class="progress" style="height: 4px;">
+                                    <div class="progress-bar {% if transfer.is_overdue %}bg-danger{% else %}bg-info{% endif %}"
+                                         style="width: {{ transfer.transit_progress }}%"></div>
+                                </div>
+                                <small class="text-muted">
+                                    Dispatched {{ transfer.dispatched_at|timesince }} ago
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item text-center py-5 text-muted">
+                            <i class="bi bi-inbox display-6"></i>
+                            <p class="mt-2 mb-0">No transfers in transit</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Arriving Soon / Recent Activity -->
+    <div class="row">
+        <!-- Arriving Today/Tomorrow -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-calendar-event"></i> Expected Arrivals</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="nav nav-tabs" id="arrivalsTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="today-tab" data-bs-toggle="tab" data-bs-target="#today" type="button">
+                                Today <span class="badge bg-primary ms-1">{{ arrivals_today|length }}</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tomorrow-tab" data-bs-toggle="tab" data-bs-target="#tomorrow" type="button">
+                                Tomorrow <span class="badge bg-secondary ms-1">{{ arrivals_tomorrow|length }}</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="week-tab" data-bs-toggle="tab" data-bs-target="#week" type="button">
+                                This Week <span class="badge bg-secondary ms-1">{{ arrivals_week|length }}</span>
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="arrivalsTabContent">
+                        <div class="tab-pane fade show active" id="today" role="tabpanel">
+                            <div class="list-group list-group-flush">
+                                {% for transfer in arrivals_today %}
+                                <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <strong>{{ transfer.transfer_number }}</strong>
+                                            <br><small class="text-muted">From: {{ transfer.source_location.name }}</small>
+                                        </div>
+                                        <span class="badge bg-primary">{{ transfer.items.count }} items</span>
+                                    </div>
+                                </a>
+                                {% empty %}
+                                <div class="list-group-item text-center text-muted py-4">
+                                    No arrivals expected today
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="tomorrow" role="tabpanel">
+                            <div class="list-group list-group-flush">
+                                {% for transfer in arrivals_tomorrow %}
+                                <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <strong>{{ transfer.transfer_number }}</strong>
+                                            <br><small class="text-muted">From: {{ transfer.source_location.name }}</small>
+                                        </div>
+                                        <span class="badge bg-secondary">{{ transfer.items.count }} items</span>
+                                    </div>
+                                </a>
+                                {% empty %}
+                                <div class="list-group-item text-center text-muted py-4">
+                                    No arrivals expected tomorrow
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="week" role="tabpanel">
+                            <div class="list-group list-group-flush">
+                                {% for transfer in arrivals_week %}
+                                <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <strong>{{ transfer.transfer_number }}</strong>
+                                            <br><small class="text-muted">
+                                                From: {{ transfer.source_location.name }} |
+                                                {{ transfer.expected_arrival_date|date:"D, M d" }}
+                                            </small>
+                                        </div>
+                                        <span class="badge bg-secondary">{{ transfer.items.count }} items</span>
+                                    </div>
+                                </a>
+                                {% empty %}
+                                <div class="list-group-item text-center text-muted py-4">
+                                    No arrivals expected this week
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-activity"></i> Recent Activity</h5>
+                    <a href="{% url 'transfers:transfer_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                        {% for activity in recent_activity %}
+                        <div class="list-group-item">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    {% if activity.action == 'created' %}
+                                    <span class="badge bg-primary p-2"><i class="bi bi-plus"></i></span>
+                                    {% elif activity.action == 'dispatched' %}
+                                    <span class="badge bg-info p-2"><i class="bi bi-send"></i></span>
+                                    {% elif activity.action == 'received' %}
+                                    <span class="badge bg-success p-2"><i class="bi bi-check"></i></span>
+                                    {% elif activity.action == 'cancelled' %}
+                                    <span class="badge bg-danger p-2"><i class="bi bi-x"></i></span>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <p class="mb-0">
+                                        <a href="{% url 'transfers:transfer_detail' activity.transfer.pk %}" class="text-decoration-none fw-semibold">
+                                            {{ activity.transfer.transfer_number }}
+                                        </a>
+                                        {{ activity.description }}
+                                    </p>
+                                    <small class="text-muted">
+                                        {{ activity.timestamp|timesince }} ago by {{ activity.user }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item text-center text-muted py-4">
+                            No recent activity
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh every 5 minutes
+setTimeout(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

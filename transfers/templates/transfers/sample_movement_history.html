@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Movement History - {{ sample.sample_id }} - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'samples:sample_list' %}">Samples</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'samples:sample_detail' sample.pk %}">{{ sample.sample_id }}</a></li>
+            <li class="breadcrumb-item active">Movement History</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Left Column: Sample Info & Current Location -->
+        <div class="col-lg-4">
+            <!-- Sample Info Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-vial"></i> Sample Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted">Sample ID:</td>
+                            <td><strong>{{ sample.sample_id }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Type:</td>
+                            <td>{{ sample.sample_type }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Status:</td>
+                            <td>
+                                <span class="badge bg-{{ sample.status_color }}">{{ sample.status }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Created:</td>
+                            <td>{{ sample.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Current Location Card -->
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt-fill"></i> Current Location</h5>
+                </div>
+                <div class="card-body">
+                    <h4 class="mb-2">{{ sample.current_location.name|default:"Unknown" }}</h4>
+                    {% if sample.current_location %}
+                    <p class="text-muted mb-0">
+                        {% if sample.current_location.building %}
+                        {{ sample.current_location.building }},
+                        {% endif %}
+                        {% if sample.current_location.room %}
+                        Room {{ sample.current_location.room }}
+                        {% endif %}
+                    </p>
+                    {% if sample.storage_position %}
+                    <p class="mb-0 mt-2">
+                        <i class="bi bi-box-seam"></i> Position: {{ sample.storage_position }}
+                    </p>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted mb-0">Location not recorded</p>
+                    {% endif %}
+
+                    {% if sample.in_transit %}
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="bi bi-truck"></i> This sample is currently in transit
+                        <br>
+                        <a href="{% url 'transfers:transfer_detail' sample.active_transfer.pk %}" class="alert-link">
+                            View Transfer {{ sample.active_transfer.transfer_number }}
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Movement Stats</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <h3 class="mb-0">{{ movement_stats.total_transfers }}</h3>
+                            <small class="text-muted">Total Transfers</small>
+                        </div>
+                        <div class="col-4">
+                            <h3 class="mb-0">{{ movement_stats.locations_visited }}</h3>
+                            <small class="text-muted">Locations</small>
+                        </div>
+                        <div class="col-4">
+                            <h3 class="mb-0">{{ movement_stats.avg_transit_days|floatformat:1 }}</h3>
+                            <small class="text-muted">Avg Days</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Movement History -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Complete Movement History</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+                            <i class="bi bi-printer"></i> Print
+                        </button>
+                        <a href="{% url 'transfers:sample_movement_export' sample.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-download"></i> Export
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Visual Location Journey -->
+                    <div class="location-journey mb-4">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            {% for location in location_journey %}
+                            <div class="journey-stop text-center">
+                                <div class="journey-marker {% if forloop.last %}bg-primary{% else %}bg-success{% endif %} text-white rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 40px; height: 40px;">
+                                    {{ forloop.counter }}
+                                </div>
+                                <small class="d-block mt-1 text-truncate" style="max-width: 80px;" title="{{ location.name }}">
+                                    {{ location.name }}
+                                </small>
+                            </div>
+                            {% if not forloop.last %}
+                            <div class="journey-arrow">
+                                <i class="bi bi-arrow-right text-muted"></i>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Detailed Timeline -->
+                    <div class="movement-timeline">
+                        {% for movement in movements %}
+                        <div class="movement-item mb-4 {% if movement.type == 'TRANSFER_IN' %}border-start border-success border-3{% elif movement.type == 'TRANSFER_OUT' %}border-start border-info border-3{% else %}border-start border-secondary border-3{% endif %} ps-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <!-- Movement Type Badge -->
+                                    {% if movement.type == 'CREATED' %}
+                                    <span class="badge bg-primary mb-2">
+                                        <i class="bi bi-plus-circle"></i> Created
+                                    </span>
+                                    {% elif movement.type == 'TRANSFER_OUT' %}
+                                    <span class="badge bg-info mb-2">
+                                        <i class="bi bi-box-arrow-right"></i> Transferred Out
+                                    </span>
+                                    {% elif movement.type == 'TRANSFER_IN' %}
+                                    <span class="badge bg-success mb-2">
+                                        <i class="bi bi-box-arrow-in-right"></i> Received
+                                    </span>
+                                    {% elif movement.type == 'STORAGE_CHANGE' %}
+                                    <span class="badge bg-secondary mb-2">
+                                        <i class="bi bi-arrow-repeat"></i> Storage Changed
+                                    </span>
+                                    {% endif %}
+
+                                    <!-- Location Info -->
+                                    <h6 class="mb-1">
+                                        {% if movement.type == 'TRANSFER_OUT' %}
+                                        {{ movement.from_location }} <i class="bi bi-arrow-right text-muted"></i> {{ movement.to_location }}
+                                        {% elif movement.type == 'TRANSFER_IN' %}
+                                        Arrived at <strong>{{ movement.location }}</strong>
+                                        {% else %}
+                                        {{ movement.location }}
+                                        {% endif %}
+                                    </h6>
+
+                                    <!-- Details -->
+                                    {% if movement.transfer %}
+                                    <p class="mb-1">
+                                        <a href="{% url 'transfers:transfer_detail' movement.transfer.pk %}" class="text-decoration-none">
+                                            Transfer {{ movement.transfer.transfer_number }}
+                                        </a>
+                                        {% if movement.transfer.courier %}
+                                        <span class="text-muted">via {{ movement.transfer.courier }}</span>
+                                        {% endif %}
+                                    </p>
+                                    {% endif %}
+
+                                    {% if movement.condition %}
+                                    <p class="mb-1">
+                                        <small>
+                                            Condition:
+                                            {% if movement.condition == 'GOOD' %}
+                                            <span class="text-success">Good</span>
+                                            {% elif movement.condition == 'COMPROMISED' %}
+                                            <span class="text-warning">Compromised</span>
+                                            {% else %}
+                                            <span class="text-danger">Damaged</span>
+                                            {% endif %}
+                                        </small>
+                                    </p>
+                                    {% endif %}
+
+                                    {% if movement.notes %}
+                                    <p class="mb-0 text-muted small">
+                                        <i class="bi bi-sticky"></i> {{ movement.notes }}
+                                    </p>
+                                    {% endif %}
+                                </div>
+
+                                <div class="text-end text-muted">
+                                    <small>
+                                        {{ movement.timestamp|date:"M d, Y" }}<br>
+                                        {{ movement.timestamp|time:"H:i" }}
+                                    </small>
+                                    {% if movement.user %}
+                                    <br><small>by {{ movement.user }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox display-4"></i>
+                            <p class="mt-2">No movement history recorded</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chain of Custody -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-shield-check"></i> Chain of Custody</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date/Time</th>
+                                    <th>Action</th>
+                                    <th>Location</th>
+                                    <th>Custodian</th>
+                                    <th>Signature</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for custody in chain_of_custody %}
+                                <tr>
+                                    <td>{{ custody.timestamp|date:"M d, Y H:i" }}</td>
+                                    <td>{{ custody.action }}</td>
+                                    <td>{{ custody.location }}</td>
+                                    <td>{{ custody.custodian }}</td>
+                                    <td>
+                                        {% if custody.signed %}
+                                        <span class="badge bg-success"><i class="bi bi-check"></i> Signed</span>
+                                        {% else %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        No chain of custody records
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .btn, nav, .card-header .btn {
+        display: none !important;
+    }
+    .card {
+        border: 1px solid #ddd !important;
+    }
+}
+
+.journey-stop {
+    flex: 0 0 auto;
+}
+
+.journey-arrow {
+    flex: 0 0 auto;
+    padding: 0 5px;
+}
+</style>
+{% endblock %}

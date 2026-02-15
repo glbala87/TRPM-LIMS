@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Profile - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mt-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">My Profile</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-person-circle me-2"></i>My Profile</h2>
+        <a href="{% url 'users:profile_edit' %}" class="btn btn-primary">
+            <i class="bi bi-pencil-square me-1"></i>Edit Profile
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- Profile Information -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Profile Information</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        {% if profile.avatar %}
+                            <img src="{{ profile.avatar.url }}" alt="Avatar" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
+                        {% else %}
+                            <div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 150px; height: 150px; font-size: 3rem;">
+                                {{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <h4 class="mb-1">{{ user.get_full_name|default:user.username }}</h4>
+                    <p class="text-muted mb-3">{{ user.email }}</p>
+
+                    {% if profile.role %}
+                        <span class="badge bg-{{ profile.role.badge_color|default:'primary' }} fs-6">
+                            {{ profile.role.name }}
+                        </span>
+                    {% endif %}
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="bi bi-person me-2"></i>Username</span>
+                        <strong>{{ user.username }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="bi bi-telephone me-2"></i>Phone</span>
+                        <strong>{{ profile.phone|default:"Not set" }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="bi bi-building me-2"></i>Department</span>
+                        <strong>{{ profile.department|default:"Not set" }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="bi bi-calendar-check me-2"></i>Date Joined</span>
+                        <strong>{{ user.date_joined|date:"M d, Y" }}</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span><i class="bi bi-clock me-2"></i>Last Login</span>
+                        <strong>{{ user.last_login|date:"M d, Y H:i"|default:"Never" }}</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Role & Permissions -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Role & Permissions</h5>
+                </div>
+                <div class="card-body">
+                    {% if profile.role %}
+                        <div class="mb-3">
+                            <h6 class="text-muted">Current Role</h6>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-{{ profile.role.badge_color|default:'primary' }} me-2">
+                                    {{ profile.role.name }}
+                                </span>
+                                {% if profile.role.description %}
+                                    <small class="text-muted">{{ profile.role.description }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <h6 class="text-muted mb-2">Permissions</h6>
+                        <div class="permissions-list">
+                            {% for permission in profile.role.permissions.all %}
+                                <span class="badge bg-light text-dark border mb-1 me-1">
+                                    <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                    {{ permission.name }}
+                                </span>
+                            {% empty %}
+                                <p class="text-muted mb-0"><em>No specific permissions assigned</em></p>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-exclamation-triangle display-4 text-warning"></i>
+                            <p class="mt-2 mb-0 text-muted">No role assigned</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-activity me-2"></i>Recent Activity</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        {% for activity in recent_activities %}
+                            <li class="list-group-item">
+                                <div class="d-flex align-items-start">
+                                    <div class="me-3">
+                                        {% if activity.action == 'login' %}
+                                            <i class="bi bi-box-arrow-in-right text-success"></i>
+                                        {% elif activity.action == 'logout' %}
+                                            <i class="bi bi-box-arrow-right text-secondary"></i>
+                                        {% elif activity.action == 'create' %}
+                                            <i class="bi bi-plus-circle text-primary"></i>
+                                        {% elif activity.action == 'update' %}
+                                            <i class="bi bi-pencil text-warning"></i>
+                                        {% elif activity.action == 'delete' %}
+                                            <i class="bi bi-trash text-danger"></i>
+                                        {% else %}
+                                            <i class="bi bi-dot text-muted"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <p class="mb-0">{{ activity.description }}</p>
+                                        <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
+                                    </div>
+                                </div>
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item text-center py-4">
+                                <i class="bi bi-inbox display-6 text-muted"></i>
+                                <p class="text-muted mb-0 mt-2">No recent activity</p>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% if recent_activities %}
+                    <div class="card-footer text-center">
+                        <a href="#" class="text-decoration-none">View all activity</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Info Row -->
+    <div class="row">
+        <!-- Account Status -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Account Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="p-2">
+                                {% if user.is_active %}
+                                    <i class="bi bi-check-circle-fill display-6 text-success"></i>
+                                    <p class="mb-0 mt-2">Active</p>
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill display-6 text-danger"></i>
+                                    <p class="mb-0 mt-2">Inactive</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2">
+                                {% if user.is_staff %}
+                                    <i class="bi bi-star-fill display-6 text-warning"></i>
+                                    <p class="mb-0 mt-2">Staff</p>
+                                {% else %}
+                                    <i class="bi bi-star display-6 text-muted"></i>
+                                    <p class="mb-0 mt-2">User</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2">
+                                {% if profile.email_verified %}
+                                    <i class="bi bi-envelope-check-fill display-6 text-success"></i>
+                                    <p class="mb-0 mt-2">Email Verified</p>
+                                {% else %}
+                                    <i class="bi bi-envelope-x display-6 text-warning"></i>
+                                    <p class="mb-0 mt-2">Email Unverified</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'users:profile_edit' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil me-2"></i>Edit Profile
+                        </a>
+                        <a href="#" class="btn btn-outline-secondary">
+                            <i class="bi bi-key me-2"></i>Change Password
+                        </a>
+                        <a href="#" class="btn btn-outline-info">
+                            <i class="bi bi-shield-check me-2"></i>Two-Factor Authentication
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Instruments Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">
+            <i class="bi bi-speedometer2 me-2"></i> Instruments Dashboard
+        </h1>
+        <div>
+            <span class="text-muted me-3" id="lastUpdated">
+                Last updated: <span id="updateTime">{{ now|date:"H:i:s" }}</span>
+            </span>
+            <button class="btn btn-outline-primary" id="refreshDashboard">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Total Connections</h6>
+                            <h2 class="mb-0">{{ stats.total_connections|default:0 }}</h2>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                            <i class="bi bi-plug text-primary fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="badge bg-success">{{ stats.connected|default:0 }} connected</span>
+                        <span class="badge bg-danger">{{ stats.disconnected|default:0 }} offline</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Messages Today</h6>
+                            <h2 class="mb-0">{{ stats.messages_today|default:0 }}</h2>
+                        </div>
+                        <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                            <i class="bi bi-chat-text text-info fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <span class="text-primary">{{ stats.inbound_today|default:0 }}</span> in /
+                            <span class="text-success">{{ stats.outbound_today|default:0 }}</span> out
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Results Received</h6>
+                            <h2 class="mb-0">{{ stats.results_today|default:0 }}</h2>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                            <i class="bi bi-clipboard-check text-success fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-success">
+                            <i class="bi bi-arrow-up"></i> {{ stats.results_change|default:0 }}% vs yesterday
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm {% if stats.errors_today > 0 %}border-danger{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-1">Errors Today</h6>
+                            <h2 class="mb-0 {% if stats.errors_today > 0 %}text-danger{% endif %}">
+                                {{ stats.errors_today|default:0 }}
+                            </h2>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 rounded-circle p-3">
+                            <i class="bi bi-exclamation-triangle text-danger fs-4"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        {% if stats.error_rate > 0 %}
+                        <small class="text-danger">{{ stats.error_rate|floatformat:1 }}% error rate</small>
+                        {% else %}
+                        <small class="text-success">No errors</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- Connections Status -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-plug me-2"></i> Instrument Connections</span>
+                    <a href="{% url 'instruments:connection_list' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 40px;">Status</th>
+                                <th>Instrument</th>
+                                <th>Protocol</th>
+                                <th>Messages (24h)</th>
+                                <th>Last Activity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for conn in connections %}
+                            <tr data-connection-id="{{ conn.id }}">
+                                <td class="text-center">
+                                    {% if conn.connection_status == 'CONNECTED' %}
+                                    <span class="status-indicator bg-success pulse" title="Connected"></span>
+                                    {% elif conn.connection_status == 'ERROR' %}
+                                    <span class="status-indicator bg-warning" title="Error"></span>
+                                    {% elif conn.connection_status == 'CONNECTING' %}
+                                    <span class="status-indicator bg-info pulse" title="Connecting"></span>
+                                    {% else %}
+                                    <span class="status-indicator bg-danger" title="Disconnected"></span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'instruments:connection_detail' conn.pk %}" class="fw-medium text-decoration-none">
+                                        {{ conn.instrument.name }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ conn.name }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ conn.get_protocol_display }}</span>
+                                </td>
+                                <td>
+                                    <small>
+                                        <span class="text-primary">{{ conn.inbound_count|default:0 }}</span> in /
+                                        <span class="text-success">{{ conn.outbound_count|default:0 }}</span> out
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if conn.last_message %}
+                                    <small title="{{ conn.last_message|date:'Y-m-d H:i:s' }}">
+                                        {{ conn.last_message|timesince }} ago
+                                    </small>
+                                    {% else %}
+                                    <small class="text-muted">Never</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if conn.connection_status == 'CONNECTED' %}
+                                        <button class="btn btn-outline-danger btn-stop" data-id="{{ conn.id }}" title="Stop">
+                                            <i class="bi bi-stop-fill"></i>
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-outline-success btn-start" data-id="{{ conn.id }}" title="Start">
+                                            <i class="bi bi-play-fill"></i>
+                                        </button>
+                                        {% endif %}
+                                        <a href="{% url 'instruments:connection_detail' conn.pk %}" class="btn btn-outline-primary" title="Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No connections configured.
+                                    <a href="{% url 'instruments:connection_create' %}">Add one now</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Message Activity Chart -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-graph-up me-2"></i> Message Activity (Last 24 Hours)</span>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active" data-range="24h">24h</button>
+                        <button class="btn btn-outline-secondary" data-range="7d">7d</button>
+                        <button class="btn btn-outline-secondary" data-range="30d">30d</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="messageChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <!-- Error Statistics -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <i class="bi bi-exclamation-triangle me-2"></i> Error Statistics
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <canvas id="errorChart" height="200"></canvas>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Top Errors (Last 7 Days)</h6>
+                            <div class="list-group list-group-flush small">
+                                {% for error in top_errors %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <span class="text-truncate" title="{{ error.type }}">{{ error.type }}</span>
+                                    <span class="badge bg-danger">{{ error.count }}</span>
+                                </div>
+                                {% empty %}
+                                <div class="text-center text-muted py-3">
+                                    <i class="bi bi-check-circle text-success"></i> No errors
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-lightning me-2"></i> Quick Actions
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'instruments:connection_create' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-lg me-2"></i> Add Connection
+                        </a>
+                        <a href="{% url 'instruments:worklist_create' %}" class="btn btn-outline-success">
+                            <i class="bi bi-list-task me-2"></i> Create Worklist
+                        </a>
+                        <a href="{% url 'instruments:message_log_list' %}" class="btn btn-outline-info">
+                            <i class="bi bi-chat-text me-2"></i> View Message Logs
+                        </a>
+                        <button class="btn btn-outline-secondary" id="startAll">
+                            <i class="bi bi-play-fill me-2"></i> Start All Connections
+                        </button>
+                        <button class="btn btn-outline-danger" id="stopAll">
+                            <i class="bi bi-stop-fill me-2"></i> Stop All Connections
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity Feed -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-activity me-2"></i> Recent Activity</span>
+                    <span class="badge bg-primary" id="newActivityBadge" style="display: none;">New</span>
+                </div>
+                <div class="list-group list-group-flush" id="activityFeed" style="max-height: 400px; overflow-y: auto;">
+                    {% for activity in recent_activity %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                {% if activity.type == 'message' %}
+                                <i class="bi bi-chat-text text-info me-2"></i>
+                                {% elif activity.type == 'connection' %}
+                                <i class="bi bi-plug text-success me-2"></i>
+                                {% elif activity.type == 'error' %}
+                                <i class="bi bi-exclamation-circle text-danger me-2"></i>
+                                {% elif activity.type == 'result' %}
+                                <i class="bi bi-clipboard-check text-success me-2"></i>
+                                {% endif %}
+                                <span class="fw-medium">{{ activity.title }}</span>
+                                <br>
+                                <small class="text-muted">{{ activity.description }}</small>
+                            </div>
+                            <small class="text-muted">{{ activity.timestamp|timesince }}</small>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-4">
+                        <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                        No recent activity
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Pending Worklists -->
+            <div class="card">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-list-task me-2"></i> Pending Worklists</span>
+                    <span class="badge bg-warning text-dark">{{ pending_worklists|length }}</span>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for worklist in pending_worklists %}
+                    <a href="{% url 'instruments:worklist_detail' worklist.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between">
+                            <span>{{ worklist.connection.instrument.name }}</span>
+                            <span class="badge bg-secondary">{{ worklist.samples|length }} samples</span>
+                        </div>
+                        <small class="text-muted">Created {{ worklist.created_at|timesince }} ago</small>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-center text-muted py-3">
+                        No pending worklists
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if pending_worklists %}
+                <div class="card-footer bg-light">
+                    <a href="{% url 'instruments:worklist_list' %}?status=PENDING" class="btn btn-sm btn-outline-primary w-100">
+                        View All Pending
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.status-indicator.pulse {
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+</style>
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Message Activity Chart
+    const messageCtx = document.getElementById('messageChart').getContext('2d');
+    const messageChart = new Chart(messageCtx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels|safe|default:'[]' }},
+            datasets: [{
+                label: 'Inbound',
+                data: {{ chart_inbound|safe|default:'[]' }},
+                borderColor: 'rgb(13, 110, 253)',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                fill: true,
+                tension: 0.4
+            }, {
+                label: 'Outbound',
+                data: {{ chart_outbound|safe|default:'[]' }},
+                borderColor: 'rgb(25, 135, 84)',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            }
+        }
+    });
+
+    // Error Chart
+    const errorCtx = document.getElementById('errorChart').getContext('2d');
+    const errorChart = new Chart(errorCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ error_labels|safe|default:'["No Errors"]' }},
+            datasets: [{
+                data: {{ error_data|safe|default:'[1]' }},
+                backgroundColor: [
+                    'rgb(220, 53, 69)',
+                    'rgb(255, 193, 7)',
+                    'rgb(13, 202, 240)',
+                    'rgb(108, 117, 125)',
+                    'rgb(25, 135, 84)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Refresh dashboard
+    document.getElementById('refreshDashboard').addEventListener('click', function() {
+        location.reload();
+    });
+
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        fetch('/instruments/api/dashboard/status/')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+                // Update connection statuses
+                if (data.connections) {
+                    data.connections.forEach(conn => {
+                        const row = document.querySelector(`[data-connection-id="${conn.id}"]`);
+                        if (row) {
+                            const indicator = row.querySelector('.status-indicator');
+                            indicator.className = 'status-indicator';
+                            if (conn.status === 'CONNECTED') {
+                                indicator.classList.add('bg-success', 'pulse');
+                            } else if (conn.status === 'ERROR') {
+                                indicator.classList.add('bg-warning');
+                            } else {
+                                indicator.classList.add('bg-danger');
+                            }
+                        }
+                    });
+                }
+            });
+    }, 30000);
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Start/Stop individual connections
+    document.querySelectorAll('.btn-start').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            fetch(`/instruments/api/connections/${id}/start/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            }).then(() => location.reload());
+        });
+    });
+
+    document.querySelectorAll('.btn-stop').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            fetch(`/instruments/api/connections/${id}/stop/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            }).then(() => location.reload());
+        });
+    });
+
+    // Start/Stop all connections
+    document.getElementById('startAll').addEventListener('click', function() {
+        if (confirm('Start all instrument connections?')) {
+            fetch('/instruments/api/connections/start-all/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            }).then(() => location.reload());
+        }
+    });
+
+    document.getElementById('stopAll').addEventListener('click', function() {
+        if (confirm('Stop all instrument connections?')) {
+            fetch('/instruments/api/connections/stop-all/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            }).then(() => location.reload());
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

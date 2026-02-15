@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Audit Trail - {{ object_repr }} - TRPM-LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .action-badge-create { background-color: #198754; }
+    .action-badge-update { background-color: #0d6efd; }
+    .action-badge-delete { background-color: #dc3545; }
+    .action-badge-view { background-color: #6c757d; }
+    .action-badge-export { background-color: #0dcaf0; }
+    .action-badge-import { background-color: #6610f2; }
+    .action-badge-login { background-color: #20c997; }
+    .action-badge-logout { background-color: #fd7e14; }
+    .action-badge-login_failed { background-color: #dc3545; }
+    .action-badge-approve { background-color: #198754; }
+    .action-badge-reject { background-color: #dc3545; }
+    .action-badge-transition { background-color: #ffc107; color: #000; }
+    .action-badge-print { background-color: #6c757d; }
+    .action-badge-email { background-color: #0d6efd; }
+
+    .timeline {
+        position: relative;
+        padding: 0;
+        list-style: none;
+    }
+    .timeline::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 30px;
+        width: 3px;
+        background: linear-gradient(180deg, #0d6efd 0%, #6c757d 100%);
+    }
+    .timeline-item {
+        position: relative;
+        padding-left: 70px;
+        padding-bottom: 2rem;
+    }
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+    .timeline-marker {
+        position: absolute;
+        left: 20px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background-color: #fff;
+        border: 3px solid #0d6efd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+    }
+    .timeline-marker.create { border-color: #198754; background-color: #198754; }
+    .timeline-marker.update { border-color: #0d6efd; background-color: #0d6efd; }
+    .timeline-marker.delete { border-color: #dc3545; background-color: #dc3545; }
+    .timeline-marker i {
+        color: white;
+        font-size: 0.75rem;
+    }
+    .timeline-content {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .timeline-content:hover {
+        box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    }
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+    .timeline-date {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    .timeline-user {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .user-avatar-sm {
+        width: 32px;
+        height: 32px;
+        background-color: #0d6efd;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    .changes-summary {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 0.75rem;
+        margin-top: 0.75rem;
+        font-size: 0.875rem;
+    }
+    .change-item {
+        display: flex;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .change-item:last-child {
+        border-bottom: none;
+    }
+    .change-field {
+        font-weight: 600;
+        min-width: 120px;
+        color: #495057;
+    }
+    .change-old {
+        color: #dc3545;
+        text-decoration: line-through;
+        margin-right: 0.5rem;
+    }
+    .change-new {
+        color: #198754;
+    }
+    .object-info-card {
+        border-left: 4px solid #0d6efd;
+    }
+    .version-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        background-color: #e9ecef;
+        border-radius: 0.25rem;
+        font-weight: 600;
+    }
+    .snapshot-view {
+        font-family: 'Courier New', Consolas, monospace;
+        font-size: 0.8rem;
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .filter-tabs .nav-link {
+        color: #6c757d;
+    }
+    .filter-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom: 2px solid #0d6efd;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    .compare-toggle {
+        cursor: pointer;
+    }
+    .compare-view {
+        display: none;
+    }
+    .compare-view.show {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'audit:log_list' %}">Audit Logs</a></li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {{ content_type.model|title }} #{{ object_id }} Trail
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h1 class="h2 mb-1">
+                <i class="bi bi-clock-history me-2"></i>Audit Trail
+            </h1>
+            <p class="text-muted mb-0">
+                Complete history of changes for this {{ content_type.model|title }}
+            </p>
+        </div>
+        <div class="btn-group">
+            {% if object_url %}
+            <a href="{{ object_url }}" class="btn btn-primary">
+                <i class="bi bi-box-arrow-up-right me-1"></i>View Object
+            </a>
+            {% endif %}
+            <a href="{% url 'audit:log_list' %}?model={{ content_type.id }}&object_id={{ object_id }}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-list-ul me-1"></i>View in Log List
+            </a>
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-download me-1"></i>Export
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="?export=csv">Export as CSV</a></li>
+                <li><a class="dropdown-item" href="?export=json">Export as JSON</a></li>
+                <li><a class="dropdown-item" href="?export=pdf">Export as PDF</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Object Information Sidebar -->
+        <div class="col-lg-4">
+            <div class="card object-info-card mb-4 sticky-top" style="top: 1rem;">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Object Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="text-muted small text-uppercase">Model Type</div>
+                        <div class="fw-semibold">
+                            <span class="badge bg-secondary me-1">{{ content_type.app_label }}</span>
+                            {{ content_type.model|title }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="text-muted small text-uppercase">Object ID</div>
+                        <div class="fw-semibold">
+                            <code>{{ object_id }}</code>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="text-muted small text-uppercase">Object Name</div>
+                        <div class="fw-semibold">{{ object_repr|default:"N/A" }}</div>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <div class="text-muted small text-uppercase">Total Changes</div>
+                        <div class="fw-semibold h4 mb-0">{{ audit_logs|length }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="text-muted small text-uppercase">First Recorded</div>
+                        <div class="fw-semibold">
+                            {% if first_entry %}
+                            {{ first_entry.timestamp|date:"M j, Y H:i" }}
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="text-muted small text-uppercase">Last Modified</div>
+                        <div class="fw-semibold">
+                            {% if last_entry %}
+                            {{ last_entry.timestamp|date:"M j, Y H:i" }}
+                            <br><small class="text-muted">({{ last_entry.timestamp|timesince }} ago)</small>
+                            {% else %}
+                            N/A
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Action Summary -->
+                    <div class="text-muted small text-uppercase mb-2">Actions Summary</div>
+                    {% for action, count in action_counts.items %}
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="badge action-badge-{{ action|lower }}">{{ action }}</span>
+                        <span class="text-muted">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="col-lg-8">
+            <!-- Filter Tabs -->
+            <div class="card mb-4">
+                <div class="card-body py-2">
+                    <ul class="nav filter-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link {% if not request.GET.action %}active{% endif %}"
+                               href="{% url 'audit:trail' content_type.app_label content_type.model object_id %}">
+                                All
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.GET.action == 'CREATE' %}active{% endif %}"
+                               href="?action=CREATE">
+                                <i class="bi bi-plus-circle me-1"></i>Creates
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.GET.action == 'UPDATE' %}active{% endif %}"
+                               href="?action=UPDATE">
+                                <i class="bi bi-pencil me-1"></i>Updates
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.GET.action == 'DELETE' %}active{% endif %}"
+                               href="?action=DELETE">
+                                <i class="bi bi-trash me-1"></i>Deletes
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            {% if audit_logs %}
+            <ul class="timeline">
+                {% for log in audit_logs %}
+                <li class="timeline-item">
+                    <div class="timeline-marker {{ log.action|lower }}">
+                        {% if log.action == 'CREATE' %}
+                        <i class="bi bi-plus"></i>
+                        {% elif log.action == 'UPDATE' %}
+                        <i class="bi bi-pencil"></i>
+                        {% elif log.action == 'DELETE' %}
+                        <i class="bi bi-trash"></i>
+                        {% else %}
+                        <i class="bi bi-circle"></i>
+                        {% endif %}
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-header">
+                            <div>
+                                <span class="badge action-badge-{{ log.action|lower }} me-2">
+                                    {{ log.get_action_display }}
+                                </span>
+                                {% if log.version %}
+                                <span class="version-badge">v{{ log.version }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="timeline-date">
+                                <i class="bi bi-calendar me-1"></i>
+                                {{ log.timestamp|date:"M j, Y" }}
+                                <i class="bi bi-clock ms-2 me-1"></i>
+                                {{ log.timestamp|time:"H:i:s" }}
+                            </div>
+                        </div>
+
+                        <div class="timeline-user">
+                            <div class="user-avatar-sm">
+                                {% if log.username %}
+                                {{ log.username|slice:":1"|upper }}
+                                {% else %}
+                                <i class="bi bi-robot" style="font-size: 0.75rem;"></i>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <strong>{{ log.username|default:"System" }}</strong>
+                                {% if log.ip_address %}
+                                <small class="text-muted ms-2">
+                                    <i class="bi bi-globe"></i> {{ log.ip_address }}
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if log.changed_fields %}
+                        <div class="changes-summary">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong>
+                                    <i class="bi bi-pencil-square me-1"></i>
+                                    {{ log.changed_fields|length }} field(s) changed
+                                </strong>
+                                <button class="btn btn-sm btn-link p-0 compare-toggle"
+                                        data-target="compare-{{ log.id }}">
+                                    Show/Hide Details
+                                </button>
+                            </div>
+                            <div id="compare-{{ log.id }}" class="compare-view show">
+                                {% for field, values in log.changed_fields.items %}
+                                <div class="change-item">
+                                    <span class="change-field">{{ field }}:</span>
+                                    <div>
+                                        <span class="change-old">
+                                            {% if values.old == None or values.old == '' %}
+                                            (empty)
+                                            {% else %}
+                                            {{ values.old|truncatechars:50 }}
+                                            {% endif %}
+                                        </span>
+                                        <i class="bi bi-arrow-right text-muted mx-1"></i>
+                                        <span class="change-new">
+                                            {% if values.new == None or values.new == '' %}
+                                            (empty)
+                                            {% else %}
+                                            {{ values.new|truncatechars:50 }}
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if log.notes %}
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="bi bi-sticky me-1"></i>{{ log.notes }}
+                            </small>
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-2">
+                            <a href="{% url 'audit:log_detail' log.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye me-1"></i>View Full Details
+                            </a>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="card">
+                <div class="empty-state">
+                    <i class="bi bi-inbox display-4"></i>
+                    <h5 class="mt-3">No Audit Records Found</h5>
+                    <p class="text-muted">
+                        There are no recorded changes for this object
+                        {% if request.GET.action %}with the selected filter{% endif %}.
+                    </p>
+                    {% if request.GET.action %}
+                    <a href="{% url 'audit:trail' content_type.app_label content_type.model object_id %}"
+                       class="btn btn-primary">
+                        Clear Filters
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Snapshots Section (if using AuditTrail model) -->
+            {% if snapshots %}
+            <div class="card mt-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-camera me-2"></i>State Snapshots
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="snapshotsAccordion">
+                        {% for snapshot in snapshots %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading-{{ snapshot.id }}">
+                                <button class="accordion-button collapsed" type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#collapse-{{ snapshot.id }}">
+                                    <span class="version-badge me-2">v{{ snapshot.version }}</span>
+                                    <span class="badge action-badge-{{ snapshot.action|lower }} me-2">
+                                        {{ snapshot.action }}
+                                    </span>
+                                    {{ snapshot.timestamp|date:"M j, Y H:i:s" }}
+                                    {% if snapshot.user %}
+                                    <small class="text-muted ms-2">by {{ snapshot.user.username }}</small>
+                                    {% endif %}
+                                </button>
+                            </h2>
+                            <div id="collapse-{{ snapshot.id }}" class="accordion-collapse collapse"
+                                 aria-labelledby="heading-{{ snapshot.id }}"
+                                 data-bs-parent="#snapshotsAccordion">
+                                <div class="accordion-body">
+                                    <pre class="snapshot-view">{{ snapshot.snapshot|pprint }}</pre>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle compare view
+    document.querySelectorAll('.compare-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var targetId = this.getAttribute('data-target');
+            var target = document.getElementById(targetId);
+            if (target) {
+                target.classList.toggle('show');
+            }
+        });
+    });
+
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

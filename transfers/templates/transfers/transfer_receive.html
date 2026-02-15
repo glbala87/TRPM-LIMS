@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Receive Transfer {{ transfer.transfer_number }} - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'transfers:transfer_list' %}">Transfers</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'transfers:transfer_detail' transfer.pk %}">{{ transfer.transfer_number }}</a></li>
+                    <li class="breadcrumb-item active">Receive</li>
+                </ol>
+            </nav>
+
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-box-arrow-in-down"></i> Receive Transfer
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Transfer Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-1">Transfer #</h6>
+                                    <h5 class="mb-0">{{ transfer.transfer_number }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-1">From</h6>
+                                    <h5 class="mb-0">{{ transfer.source_location.name }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-1">Dispatched</h6>
+                                    <h5 class="mb-0">{{ transfer.dispatched_at|date:"M d, Y" }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-1">Items</h6>
+                                    <h5 class="mb-0">{{ transfer.items.count }}</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shipment Condition Check -->
+                    <div class="alert alert-info mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <strong><i class="bi bi-thermometer-half"></i> Expected Conditions:</strong>
+                                {% if transfer.shipment_conditions == 'AMBIENT' %}
+                                <span class="badge bg-secondary ms-2">Ambient</span>
+                                {% elif transfer.shipment_conditions == 'REFRIGERATED' %}
+                                <span class="badge bg-info ms-2">Refrigerated (2-8C)</span>
+                                {% elif transfer.shipment_conditions == 'FROZEN' %}
+                                <span class="badge bg-primary ms-2">Frozen (-20C)</span>
+                                {% elif transfer.shipment_conditions == 'DEEP_FROZEN' %}
+                                <span class="badge bg-dark ms-2">Deep Frozen (-80C)</span>
+                                {% elif transfer.shipment_conditions == 'LIQUID_NITROGEN' %}
+                                <span class="badge bg-danger ms-2">Liquid Nitrogen</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 text-md-end">
+                                <strong>Courier:</strong> {{ transfer.courier|default:"Not specified" }}
+                                {% if transfer.tracking_number %}
+                                | <strong>Tracking:</strong> {{ transfer.tracking_number }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Package Inspection -->
+                        <h5 class="mb-3"><i class="bi bi-search"></i> Package Inspection</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Package Condition</label>
+                                <select name="package_condition" class="form-select">
+                                    <option value="INTACT">Intact - No visible damage</option>
+                                    <option value="MINOR_DAMAGE">Minor damage - Contents likely OK</option>
+                                    <option value="MAJOR_DAMAGE">Major damage - Contents may be affected</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Temperature on Arrival</label>
+                                <div class="input-group">
+                                    <input type="number" name="arrival_temperature" class="form-control"
+                                           placeholder="Temperature" step="0.1">
+                                    <span class="input-group-text">C</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cold Chain Maintained?</label>
+                                <select name="cold_chain_maintained" class="form-select">
+                                    <option value="YES">Yes</option>
+                                    <option value="UNKNOWN">Unknown / Not Applicable</option>
+                                    <option value="NO">No - Temperature excursion detected</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Item Checklist -->
+                        <h5 class="mb-3"><i class="bi bi-list-check"></i> Item Verification Checklist</h5>
+                        <p class="text-muted mb-3">
+                            Check each item received and document its condition. Items not checked will be marked as missing.
+                        </p>
+
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 50px;">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="select-all-items">
+                                                <label class="form-check-label visually-hidden" for="select-all-items">Select All</label>
+                                            </div>
+                                        </th>
+                                        <th>Sample ID</th>
+                                        <th>Sample Type</th>
+                                        <th>Expected Qty</th>
+                                        <th>Received Qty</th>
+                                        <th>Condition</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in transfer.items.all %}
+                                    <tr class="item-row" data-item-id="{{ item.pk }}">
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input item-checkbox" type="checkbox"
+                                                       name="items_received" value="{{ item.pk }}"
+                                                       id="item_{{ item.pk }}">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <label for="item_{{ item.pk }}" class="mb-0 cursor-pointer">
+                                                <strong>{{ item.sample.sample_id }}</strong>
+                                            </label>
+                                            {% if item.condition_at_dispatch %}
+                                            <br>
+                                            <small class="text-muted">
+                                                Dispatched:
+                                                {% if item.condition_at_dispatch == 'GOOD' %}
+                                                <span class="badge bg-success">Good</span>
+                                                {% elif item.condition_at_dispatch == 'COMPROMISED' %}
+                                                <span class="badge bg-warning text-dark">Compromised</span>
+                                                {% else %}
+                                                <span class="badge bg-danger">Damaged</span>
+                                                {% endif %}
+                                            </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ item.sample.sample_type }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>
+                                            <input type="number" name="quantity_{{ item.pk }}"
+                                                   class="form-control form-control-sm" style="width: 80px;"
+                                                   value="{{ item.quantity }}" min="0" max="{{ item.quantity }}">
+                                        </td>
+                                        <td>
+                                            <select name="condition_{{ item.pk }}" class="form-select form-select-sm condition-select">
+                                                <option value="GOOD">Good</option>
+                                                <option value="COMPROMISED">Compromised</option>
+                                                <option value="DAMAGED">Damaged</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" name="notes_{{ item.pk }}"
+                                                   class="form-control form-control-sm"
+                                                   placeholder="Optional notes...">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Reception Progress -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h6 class="mb-0">Reception Progress</h6>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-3" style="height: 20px;">
+                                                <div class="progress-bar bg-success" id="progress-bar"
+                                                     role="progressbar" style="width: 0%;">
+                                                    <span id="progress-text">0%</span>
+                                                </div>
+                                            </div>
+                                            <span id="items-count">0/{{ transfer.items.count }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- General Reception Notes -->
+                        <div class="mb-4">
+                            <label for="reception_notes" class="form-label">
+                                <i class="bi bi-sticky"></i> Reception Notes
+                            </label>
+                            <textarea name="reception_notes" id="reception_notes"
+                                      class="form-control" rows="3"
+                                      placeholder="General notes about the received shipment..."></textarea>
+                        </div>
+
+                        <!-- Discrepancy Alert -->
+                        <div class="alert alert-warning mb-4" id="discrepancy-alert" style="display: none;">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Discrepancy Detected:</strong>
+                            Not all items have been checked or some items show damage/compromised conditions.
+                            Please ensure all items are accounted for before completing reception.
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Transfer
+                            </a>
+                            <div>
+                                <button type="submit" name="action" value="partial"
+                                        class="btn btn-warning me-2" id="partial-receive-btn">
+                                    <i class="bi bi-exclamation-circle"></i> Partial Receive
+                                </button>
+                                <button type="submit" name="action" value="complete"
+                                        class="btn btn-success btn-lg" id="complete-receive-btn">
+                                    <i class="bi bi-check-circle"></i> Complete Reception
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('select-all-items');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const itemsCount = document.getElementById('items-count');
+    const discrepancyAlert = document.getElementById('discrepancy-alert');
+    const totalItems = {{ transfer.items.count }};
+
+    function updateProgress() {
+        const checkedItems = document.querySelectorAll('.item-checkbox:checked').length;
+        const percentage = Math.round((checkedItems / totalItems) * 100);
+
+        progressBar.style.width = percentage + '%';
+        progressText.textContent = percentage + '%';
+        itemsCount.textContent = checkedItems + '/' + totalItems;
+
+        // Check for discrepancies
+        let hasDiscrepancy = false;
+        if (checkedItems < totalItems) {
+            hasDiscrepancy = true;
+        }
+
+        document.querySelectorAll('.condition-select').forEach(select => {
+            if (select.value !== 'GOOD') {
+                hasDiscrepancy = true;
+            }
+        });
+
+        discrepancyAlert.style.display = hasDiscrepancy ? 'block' : 'none';
+    }
+
+    // Select all functionality
+    selectAll.addEventListener('change', function() {
+        itemCheckboxes.forEach(cb => cb.checked = this.checked);
+        updateProgress();
+    });
+
+    // Individual checkbox changes
+    itemCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            selectAll.checked = Array.from(itemCheckboxes).every(c => c.checked);
+            updateProgress();
+        });
+    });
+
+    // Condition changes
+    document.querySelectorAll('.condition-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const row = this.closest('tr');
+            row.classList.remove('table-success', 'table-warning', 'table-danger');
+
+            if (this.value === 'GOOD') {
+                row.classList.add('table-success');
+            } else if (this.value === 'COMPROMISED') {
+                row.classList.add('table-warning');
+            } else if (this.value === 'DAMAGED') {
+                row.classList.add('table-danger');
+            }
+
+            updateProgress();
+        });
+    });
+
+    // Initial progress update
+    updateProgress();
+});
+</script>
+{% endblock %}

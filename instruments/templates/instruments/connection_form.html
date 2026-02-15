@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}New{% endif %} Connection{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'instruments:dashboard' %}">Instruments</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'instruments:connection_list' %}">Connections</a></li>
+            <li class="breadcrumb-item active">{% if form.instance.pk %}Edit{% else %}New{% endif %}</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="bi bi-plug me-2"></i>
+                        {% if form.instance.pk %}Edit Connection: {{ form.instance.name }}{% else %}New Instrument Connection{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="connectionForm">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Basic Settings -->
+                        <h6 class="text-muted mb-3">Basic Settings</h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="id_instrument" class="form-label">Instrument <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.instrument.errors %}is-invalid{% endif %}"
+                                        id="id_instrument" name="instrument" required>
+                                    <option value="">Select an instrument...</option>
+                                    {% for instrument in instruments %}
+                                    <option value="{{ instrument.pk }}"
+                                            {% if form.instance.instrument_id == instrument.pk %}selected{% endif %}>
+                                        {{ instrument.name }} ({{ instrument.model }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.instrument.errors %}
+                                <div class="invalid-feedback">{{ form.instrument.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_name" class="form-label">Connection Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control {% if form.name.errors %}is-invalid{% endif %}"
+                                       id="id_name" name="name" value="{{ form.instance.name|default:'' }}"
+                                       placeholder="e.g., Primary Connection" required>
+                                {% if form.name.errors %}
+                                <div class="invalid-feedback">{{ form.name.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">A friendly name to identify this connection</div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="id_protocol" class="form-label">Protocol <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.protocol.errors %}is-invalid{% endif %}"
+                                        id="id_protocol" name="protocol" required>
+                                    <option value="ASTM" {% if form.instance.protocol == 'ASTM' %}selected{% endif %}>
+                                        ASTM E1381/E1394
+                                    </option>
+                                    <option value="HL7" {% if form.instance.protocol == 'HL7' %}selected{% endif %}>
+                                        HL7 v2.x
+                                    </option>
+                                    <option value="CUSTOM" {% if form.instance.protocol == 'CUSTOM' %}selected{% endif %}>
+                                        Custom Protocol
+                                    </option>
+                                </select>
+                                {% if form.protocol.errors %}
+                                <div class="invalid-feedback">{{ form.protocol.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_connection_type" class="form-label">Connection Type <span class="text-danger">*</span></label>
+                                <select class="form-select {% if form.connection_type.errors %}is-invalid{% endif %}"
+                                        id="id_connection_type" name="connection_type" required>
+                                    <option value="TCP_SERVER" {% if form.instance.connection_type == 'TCP_SERVER' %}selected{% endif %}>
+                                        TCP Server (Listen for connections)
+                                    </option>
+                                    <option value="TCP_CLIENT" {% if form.instance.connection_type == 'TCP_CLIENT' %}selected{% endif %}>
+                                        TCP Client (Connect to instrument)
+                                    </option>
+                                    <option value="SERIAL" {% if form.instance.connection_type == 'SERIAL' %}selected{% endif %}>
+                                        Serial Port
+                                    </option>
+                                </select>
+                                {% if form.connection_type.errors %}
+                                <div class="invalid-feedback">{{ form.connection_type.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Network Settings -->
+                        <div id="networkSettings">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-wifi me-2"></i>Network Settings
+                            </h6>
+
+                            <div class="row mb-3">
+                                <div class="col-md-8">
+                                    <label for="id_host" class="form-label">Host / IP Address <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control {% if form.host.errors %}is-invalid{% endif %}"
+                                           id="id_host" name="host" value="{{ form.instance.host|default:'0.0.0.0' }}"
+                                           placeholder="0.0.0.0">
+                                    {% if form.host.errors %}
+                                    <div class="invalid-feedback">{{ form.host.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <span class="server-hint">For TCP Server: Use 0.0.0.0 to listen on all interfaces</span>
+                                        <span class="client-hint d-none">For TCP Client: Enter the instrument's IP address or hostname</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="id_port" class="form-label">Port <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control {% if form.port.errors %}is-invalid{% endif %}"
+                                           id="id_port" name="port" value="{{ form.instance.port|default:5000 }}"
+                                           min="1" max="65535">
+                                    {% if form.port.errors %}
+                                    <div class="invalid-feedback">{{ form.port.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Serial Settings -->
+                        <div id="serialSettings" class="d-none">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-usb-symbol me-2"></i>Serial Port Settings
+                            </h6>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="id_serial_port" class="form-label">Serial Port <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control {% if form.serial_port.errors %}is-invalid{% endif %}"
+                                           id="id_serial_port" name="serial_port"
+                                           value="{{ form.instance.serial_port|default:'' }}"
+                                           placeholder="COM1 or /dev/ttyUSB0">
+                                    {% if form.serial_port.errors %}
+                                    <div class="invalid-feedback">{{ form.serial_port.errors }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_baud_rate" class="form-label">Baud Rate <span class="text-danger">*</span></label>
+                                    <select class="form-select {% if form.baud_rate.errors %}is-invalid{% endif %}"
+                                            id="id_baud_rate" name="baud_rate">
+                                        {% for rate in '1200,2400,4800,9600,19200,38400,57600,115200'|make_list %}
+                                        <option value="{{ rate }}" {% if form.instance.baud_rate == rate %}selected{% endif %}>
+                                            {{ rate }}
+                                        </option>
+                                        {% endfor %}
+                                        <option value="1200" {% if form.instance.baud_rate == 1200 %}selected{% endif %}>1200</option>
+                                        <option value="2400" {% if form.instance.baud_rate == 2400 %}selected{% endif %}>2400</option>
+                                        <option value="4800" {% if form.instance.baud_rate == 4800 %}selected{% endif %}>4800</option>
+                                        <option value="9600" {% if form.instance.baud_rate == 9600 or not form.instance.baud_rate %}selected{% endif %}>9600</option>
+                                        <option value="19200" {% if form.instance.baud_rate == 19200 %}selected{% endif %}>19200</option>
+                                        <option value="38400" {% if form.instance.baud_rate == 38400 %}selected{% endif %}>38400</option>
+                                        <option value="57600" {% if form.instance.baud_rate == 57600 %}selected{% endif %}>57600</option>
+                                        <option value="115200" {% if form.instance.baud_rate == 115200 %}selected{% endif %}>115200</option>
+                                    </select>
+                                    {% if form.baud_rate.errors %}
+                                    <div class="invalid-feedback">{{ form.baud_rate.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Connection Parameters -->
+                        <h6 class="text-muted mb-3">
+                            <i class="bi bi-sliders me-2"></i>Connection Parameters
+                        </h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="id_timeout" class="form-label">Timeout (seconds)</label>
+                                <input type="number" class="form-control" id="id_timeout" name="timeout"
+                                       value="{{ form.instance.timeout|default:30 }}" min="1" max="300">
+                                <div class="form-text">Connection timeout</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="id_retry_interval" class="form-label">Retry Interval (seconds)</label>
+                                <input type="number" class="form-control" id="id_retry_interval" name="retry_interval"
+                                       value="{{ form.instance.retry_interval|default:60 }}" min="1" max="3600">
+                                <div class="form-text">Wait time before retry</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="id_max_retries" class="form-label">Max Retries</label>
+                                <input type="number" class="form-control" id="id_max_retries" name="max_retries"
+                                       value="{{ form.instance.max_retries|default:3 }}" min="0" max="100">
+                                <div class="form-text">Maximum retry attempts</div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Status Settings -->
+                        <h6 class="text-muted mb-3">
+                            <i class="bi bi-toggles me-2"></i>Status Settings
+                        </h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="id_is_active" name="is_active"
+                                           {% if form.instance.is_active or not form.instance.pk %}checked{% endif %}>
+                                    <label class="form-check-label" for="id_is_active">
+                                        <strong>Connection Enabled</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text">Disabled connections will not be started</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="id_auto_start" name="auto_start"
+                                           {% if form.instance.auto_start or not form.instance.pk %}checked{% endif %}>
+                                    <label class="form-check-label" for="id_auto_start">
+                                        <strong>Auto-start</strong>
+                                    </label>
+                                </div>
+                                <div class="form-text">Automatically start when service starts</div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Protocol Configuration -->
+                        <h6 class="text-muted mb-3">
+                            <i class="bi bi-code-slash me-2"></i>Protocol Configuration (Advanced)
+                        </h6>
+
+                        <div class="mb-3">
+                            <label for="id_protocol_config" class="form-label">Protocol-specific Configuration (JSON)</label>
+                            <textarea class="form-control font-monospace {% if form.protocol_config.errors %}is-invalid{% endif %}"
+                                      id="id_protocol_config" name="protocol_config" rows="4"
+                                      placeholder='{"option": "value"}'>{{ form.instance.protocol_config|default:"{}" }}</textarea>
+                            {% if form.protocol_config.errors %}
+                            <div class="invalid-feedback">{{ form.protocol_config.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">JSON object with protocol-specific settings</div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-3">
+                            <label for="id_notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="id_notes" name="notes" rows="3"
+                                      placeholder="Optional notes about this connection">{{ form.instance.notes|default:'' }}</textarea>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'instruments:connection_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-1"></i> Cancel
+                            </a>
+                            <div>
+                                <button type="submit" name="action" value="save" class="btn btn-primary">
+                                    <i class="bi bi-check-lg me-1"></i>
+                                    {% if form.instance.pk %}Save Changes{% else %}Create Connection{% endif %}
+                                </button>
+                                {% if not form.instance.pk %}
+                                <button type="submit" name="action" value="save_and_start" class="btn btn-success ms-2">
+                                    <i class="bi bi-play-fill me-1"></i> Save and Start
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const connectionTypeSelect = document.getElementById('id_connection_type');
+    const networkSettings = document.getElementById('networkSettings');
+    const serialSettings = document.getElementById('serialSettings');
+    const serverHint = document.querySelector('.server-hint');
+    const clientHint = document.querySelector('.client-hint');
+
+    function updateSettingsVisibility() {
+        const connectionType = connectionTypeSelect.value;
+
+        if (connectionType === 'SERIAL') {
+            networkSettings.classList.add('d-none');
+            serialSettings.classList.remove('d-none');
+        } else {
+            networkSettings.classList.remove('d-none');
+            serialSettings.classList.add('d-none');
+
+            // Update hint text
+            if (connectionType === 'TCP_SERVER') {
+                serverHint.classList.remove('d-none');
+                clientHint.classList.add('d-none');
+            } else {
+                serverHint.classList.add('d-none');
+                clientHint.classList.remove('d-none');
+            }
+        }
+    }
+
+    connectionTypeSelect.addEventListener('change', updateSettingsVisibility);
+
+    // Initialize on page load
+    updateSettingsVisibility();
+
+    // JSON validation for protocol config
+    const protocolConfigInput = document.getElementById('id_protocol_config');
+    protocolConfigInput.addEventListener('blur', function() {
+        try {
+            if (this.value.trim()) {
+                JSON.parse(this.value);
+                this.classList.remove('is-invalid');
+            }
+        } catch (e) {
+            this.classList.add('is-invalid');
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Profile - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mt-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'users:profile' %}">My Profile</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Edit Profile</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-pencil-square me-2"></i>Edit Profile</h2>
+        <a href="{% url 'users:profile' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to Profile
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <div class="row">
+            <!-- Personal Information -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-person me-2"></i>Personal Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="id_first_name" class="form-label">First Name</label>
+                                <input type="text"
+                                       name="first_name"
+                                       id="id_first_name"
+                                       class="form-control {% if user_form.first_name.errors %}is-invalid{% endif %}"
+                                       value="{{ user_form.first_name.value|default:'' }}"
+                                       placeholder="Enter first name">
+                                {% if user_form.first_name.errors %}
+                                    <div class="invalid-feedback">{{ user_form.first_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="id_last_name" class="form-label">Last Name</label>
+                                <input type="text"
+                                       name="last_name"
+                                       id="id_last_name"
+                                       class="form-control {% if user_form.last_name.errors %}is-invalid{% endif %}"
+                                       value="{{ user_form.last_name.value|default:'' }}"
+                                       placeholder="Enter last name">
+                                {% if user_form.last_name.errors %}
+                                    <div class="invalid-feedback">{{ user_form.last_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_email" class="form-label">Email Address</label>
+                            <input type="email"
+                                   name="email"
+                                   id="id_email"
+                                   class="form-control {% if user_form.email.errors %}is-invalid{% endif %}"
+                                   value="{{ user_form.email.value|default:'' }}"
+                                   placeholder="Enter email address">
+                            {% if user_form.email.errors %}
+                                <div class="invalid-feedback">{{ user_form.email.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_phone" class="form-label">Phone Number</label>
+                            <input type="tel"
+                                   name="phone"
+                                   id="id_phone"
+                                   class="form-control {% if profile_form.phone.errors %}is-invalid{% endif %}"
+                                   value="{{ profile_form.phone.value|default:'' }}"
+                                   placeholder="Enter phone number">
+                            {% if profile_form.phone.errors %}
+                                <div class="invalid-feedback">{{ profile_form.phone.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_department" class="form-label">Department</label>
+                            <select name="department" id="id_department" class="form-select {% if profile_form.department.errors %}is-invalid{% endif %}">
+                                <option value="">Select department...</option>
+                                {% for value, label in profile_form.department.field.choices %}
+                                    <option value="{{ value }}" {% if profile_form.department.value == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if profile_form.department.errors %}
+                                <div class="invalid-feedback">{{ profile_form.department.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Settings -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Profile Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Avatar Upload -->
+                        <div class="mb-4">
+                            <label class="form-label">Profile Picture</label>
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    {% if profile.avatar %}
+                                        <img src="{{ profile.avatar.url }}" alt="Current Avatar" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;">
+                                    {% else %}
+                                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; font-size: 1.5rem;">
+                                            {{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <input type="file"
+                                           name="avatar"
+                                           id="id_avatar"
+                                           class="form-control {% if profile_form.avatar.errors %}is-invalid{% endif %}"
+                                           accept="image/*">
+                                    <small class="text-muted">JPG, PNG or GIF. Max size 2MB.</small>
+                                    {% if profile_form.avatar.errors %}
+                                        <div class="invalid-feedback">{{ profile_form.avatar.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bio -->
+                        <div class="mb-3">
+                            <label for="id_bio" class="form-label">Bio</label>
+                            <textarea name="bio"
+                                      id="id_bio"
+                                      class="form-control {% if profile_form.bio.errors %}is-invalid{% endif %}"
+                                      rows="3"
+                                      placeholder="Tell us about yourself...">{{ profile_form.bio.value|default:'' }}</textarea>
+                            {% if profile_form.bio.errors %}
+                                <div class="invalid-feedback">{{ profile_form.bio.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Timezone -->
+                        <div class="mb-3">
+                            <label for="id_timezone" class="form-label">Timezone</label>
+                            <select name="timezone" id="id_timezone" class="form-select">
+                                <option value="">Select timezone...</option>
+                                {% for value, label in profile_form.timezone.field.choices %}
+                                    <option value="{{ value }}" {% if profile_form.timezone.value == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Notification Preferences -->
+                        <div class="mb-3">
+                            <label class="form-label d-block">Email Notifications</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="email_notifications" id="id_email_notifications" {% if profile.email_notifications %}checked{% endif %}>
+                                <label class="form-check-label" for="id_email_notifications">
+                                    Receive email notifications for important updates
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Role Information (Read-only) -->
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Role Information (Read-only)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted">Current Role</label>
+                                <p class="form-control-plaintext">
+                                    {% if profile.role %}
+                                        <span class="badge bg-{{ profile.role.badge_color|default:'primary' }}">{{ profile.role.name }}</span>
+                                    {% else %}
+                                        <span class="text-muted">No role assigned</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label text-muted">Role Description</label>
+                                <p class="form-control-plaintext">
+                                    {{ profile.role.description|default:"Contact your administrator to change your role." }}
+                                </p>
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            To request a role change, please contact your system administrator.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body d-flex justify-content-between">
+                        <a href="{% url 'users:profile' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>Cancel
+                        </a>
+                        <div>
+                            <button type="reset" class="btn btn-outline-warning me-2">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-1"></i>Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Preview avatar before upload
+    document.getElementById('id_avatar').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.querySelector('.me-3 img, .me-3 .bg-secondary');
+                if (preview.tagName === 'IMG') {
+                    preview.src = e.target.result;
+                } else {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'rounded-circle';
+                    img.style.width = '80px';
+                    img.style.height = '80px';
+                    img.style.objectFit = 'cover';
+                    preview.parentNode.replaceChild(img, preview);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+{% endblock %}

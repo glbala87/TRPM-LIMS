@@ -1,0 +1,728 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'data_exchange:export_list' %}">Exports</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'data_exchange:export_template_list' %}">Templates</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {% if template %}Edit Template{% else %}New Template{% endif %}
+                    </li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0">
+                {% if template %}Edit Export Template{% else %}Create Export Template{% endif %}
+            </h1>
+        </div>
+    </div>
+
+    <form method="post" id="templateForm">
+        {% csrf_token %}
+
+        <div class="row">
+            <!-- Main Form -->
+            <div class="col-lg-8">
+                <!-- Basic Information -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-info-circle me-2"></i>Basic Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label for="name" class="form-label">Template Name <span class="text-danger">*</span></label>
+                                <input type="text"
+                                       name="name"
+                                       id="name"
+                                       class="form-control {% if form.name.errors %}is-invalid{% endif %}"
+                                       value="{{ template.name|default:'' }}"
+                                       placeholder="e.g., Monthly Patient Report"
+                                       required>
+                                {% if form.name.errors %}
+                                <div class="invalid-feedback">{{ form.name.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="data_type" class="form-label">Data Type <span class="text-danger">*</span></label>
+                                <select name="data_type" id="data_type" class="form-select {% if form.data_type.errors %}is-invalid{% endif %}" required>
+                                    <option value="">Select data type...</option>
+                                    {% for value, label in data_type_choices %}
+                                    <option value="{{ value }}" {% if template.data_type == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.data_type.errors %}
+                                <div class="invalid-feedback">{{ form.data_type.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea name="description"
+                                          id="description"
+                                          class="form-control"
+                                          rows="3"
+                                          placeholder="Describe what this template exports and when to use it...">{{ template.description|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Field Selection -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-list-check me-2"></i>Fields to Include
+                        </h5>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllFields">Select All</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllFields">Clear All</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            <i class="bi bi-grip-vertical me-1"></i>
+                            Select fields to include. Drag to reorder them in the exported file.
+                        </p>
+
+                        <!-- Selected Fields (Sortable) -->
+                        <div class="mb-4">
+                            <h6 class="text-primary">Selected Fields</h6>
+                            <ul class="list-group" id="selectedFieldsList">
+                                {% for field in template.included_fields %}
+                                <li class="list-group-item d-flex align-items-center" data-field="{{ field }}">
+                                    <i class="bi bi-grip-vertical text-muted me-3" style="cursor: grab;"></i>
+                                    <span class="flex-grow-1">{{ field }}</span>
+                                    <button type="button" class="btn btn-sm btn-link text-danger remove-field" title="Remove">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </li>
+                                {% empty %}
+                                <li class="list-group-item text-center text-muted" id="emptyMessage">
+                                    No fields selected. Select fields from below.
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <input type="hidden" name="included_fields" id="includedFieldsInput" value="{{ template.included_fields|join:',' }}">
+                        </div>
+
+                        <!-- Available Fields -->
+                        <div>
+                            <h6 class="text-secondary">Available Fields</h6>
+                            <div id="availableFieldsContainer">
+                                <!-- Patients Fields -->
+                                <div class="field-options" data-type="PATIENTS" style="display: none;">
+                                    <div class="row g-2">
+                                        {% for field in patient_fields %}
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="{{ field.name }}" id="avail_{{ field.name }}">
+                                                <label class="form-check-label" for="avail_{{ field.name }}">
+                                                    {{ field.label }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% empty %}
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="id" id="avail_id">
+                                                <label class="form-check-label" for="avail_id">ID</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="first_name" id="avail_first_name">
+                                                <label class="form-check-label" for="avail_first_name">First Name</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="last_name" id="avail_last_name">
+                                                <label class="form-check-label" for="avail_last_name">Last Name</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="op_no" id="avail_op_no">
+                                                <label class="form-check-label" for="avail_op_no">OP Number</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="date_of_birth" id="avail_dob">
+                                                <label class="form-check-label" for="avail_dob">Date of Birth</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="gender" id="avail_gender">
+                                                <label class="form-check-label" for="avail_gender">Gender</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="email" id="avail_email">
+                                                <label class="form-check-label" for="avail_email">Email</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="phone" id="avail_phone">
+                                                <label class="form-check-label" for="avail_phone">Phone</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="nationality" id="avail_nationality">
+                                                <label class="form-check-label" for="avail_nationality">Nationality</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="created_at" id="avail_created_at">
+                                                <label class="form-check-label" for="avail_created_at">Created At</label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <!-- Samples Fields -->
+                                <div class="field-options" data-type="SAMPLES" style="display: none;">
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="sample_id" id="avail_sample_id">
+                                                <label class="form-check-label" for="avail_sample_id">Sample ID</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="patient" id="avail_patient">
+                                                <label class="form-check-label" for="avail_patient">Patient</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="sample_type" id="avail_sample_type">
+                                                <label class="form-check-label" for="avail_sample_type">Sample Type</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="collection_date" id="avail_collection_date">
+                                                <label class="form-check-label" for="avail_collection_date">Collection Date</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="status" id="avail_sample_status">
+                                                <label class="form-check-label" for="avail_sample_status">Status</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="barcode" id="avail_barcode">
+                                                <label class="form-check-label" for="avail_barcode">Barcode</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Results Fields -->
+                                <div class="field-options" data-type="RESULTS" style="display: none;">
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="result_id" id="avail_result_id">
+                                                <label class="form-check-label" for="avail_result_id">Result ID</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="test_name" id="avail_test_name">
+                                                <label class="form-check-label" for="avail_test_name">Test Name</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="result_value" id="avail_result_value">
+                                                <label class="form-check-label" for="avail_result_value">Result Value</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="unit" id="avail_unit">
+                                                <label class="form-check-label" for="avail_unit">Unit</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="reference_range" id="avail_reference_range">
+                                                <label class="form-check-label" for="avail_reference_range">Reference Range</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input available-field" type="checkbox" value="result_date" id="avail_result_date">
+                                                <label class="form-check-label" for="avail_result_date">Result Date</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Default message -->
+                                <div id="selectTypeMessage" class="text-center text-muted py-4">
+                                    <i class="bi bi-hand-index fs-3 d-block mb-2"></i>
+                                    Please select a data type to see available fields
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Field Labels -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-tag me-2"></i>Custom Field Labels (Optional)
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-secondary collapsed" data-bs-toggle="collapse" data-bs-target="#fieldLabelsCollapse">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="collapse" id="fieldLabelsCollapse">
+                        <div class="card-body">
+                            <p class="text-muted mb-3">
+                                Customize the column headers in the exported file. Leave blank to use default labels.
+                            </p>
+                            <div id="fieldLabelsContainer">
+                                {% for field, label in template.field_labels.items %}
+                                <div class="row g-2 mb-2 label-row">
+                                    <div class="col-5">
+                                        <input type="text" class="form-control form-control-sm" value="{{ field }}" readonly>
+                                    </div>
+                                    <div class="col-5">
+                                        <input type="text" class="form-control form-control-sm label-input" name="label_{{ field }}" value="{{ label }}" placeholder="Custom label...">
+                                    </div>
+                                    <div class="col-2">
+                                        <button type="button" class="btn btn-sm btn-outline-danger w-100 remove-label">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-center text-muted py-3" id="noLabelsMessage">
+                                    Add selected fields to configure custom labels
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="field_labels" id="fieldLabelsInput" value="{{ template.field_labels|default:'{}' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output Format & Options -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-gear me-2"></i>Output Format & Options
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Output Format</label>
+                                <div class="d-flex gap-2">
+                                    <input type="radio" name="output_format" value="CSV" id="format_csv" class="btn-check"
+                                           {% if template.output_format == 'CSV' or not template %}checked{% endif %}>
+                                    <label class="btn btn-outline-secondary" for="format_csv">
+                                        <i class="bi bi-filetype-csv me-1"></i>CSV
+                                    </label>
+
+                                    <input type="radio" name="output_format" value="XLSX" id="format_xlsx" class="btn-check"
+                                           {% if template.output_format == 'XLSX' %}checked{% endif %}>
+                                    <label class="btn btn-outline-secondary" for="format_xlsx">
+                                        <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                                    </label>
+
+                                    <input type="radio" name="output_format" value="JSON" id="format_json" class="btn-check"
+                                           {% if template.output_format == 'JSON' %}checked{% endif %}>
+                                    <label class="btn btn-outline-secondary" for="format_json">
+                                        <i class="bi bi-filetype-json me-1"></i>JSON
+                                    </label>
+
+                                    <input type="radio" name="output_format" value="PDF" id="format_pdf" class="btn-check"
+                                           {% if template.output_format == 'PDF' %}checked{% endif %}>
+                                    <label class="btn btn-outline-secondary" for="format_pdf">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date Formats</label>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input type="text" name="date_format" class="form-control form-control-sm"
+                                               value="{{ template.date_format|default:'%Y-%m-%d' }}"
+                                               placeholder="%Y-%m-%d">
+                                        <small class="text-muted">Date format</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="text" name="datetime_format" class="form-control form-control-sm"
+                                               value="{{ template.datetime_format|default:'%Y-%m-%d %H:%M:%S' }}"
+                                               placeholder="%Y-%m-%d %H:%M:%S">
+                                        <small class="text-muted">DateTime format</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="include_headers" id="include_headers"
+                                           {% if template.include_headers or not template %}checked{% endif %}>
+                                    <label class="form-check-label" for="include_headers">
+                                        Include column headers in export
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Default Filters -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-funnel me-2"></i>Default Filters (Optional)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Set default filter criteria that will be applied when using this template.
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="default_date_range" class="form-label">Default Date Range</label>
+                                <select name="default_date_range" id="default_date_range" class="form-select">
+                                    <option value="">No default</option>
+                                    <option value="today" {% if template.default_filters.date_range == 'today' %}selected{% endif %}>Today</option>
+                                    <option value="yesterday" {% if template.default_filters.date_range == 'yesterday' %}selected{% endif %}>Yesterday</option>
+                                    <option value="last_7_days" {% if template.default_filters.date_range == 'last_7_days' %}selected{% endif %}>Last 7 days</option>
+                                    <option value="last_30_days" {% if template.default_filters.date_range == 'last_30_days' %}selected{% endif %}>Last 30 days</option>
+                                    <option value="this_month" {% if template.default_filters.date_range == 'this_month' %}selected{% endif %}>This month</option>
+                                    <option value="last_month" {% if template.default_filters.date_range == 'last_month' %}selected{% endif %}>Last month</option>
+                                    <option value="this_year" {% if template.default_filters.date_range == 'this_year' %}selected{% endif %}>This year</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="default_status" class="form-label">Default Status</label>
+                                <select name="default_status" id="default_status" class="form-select">
+                                    <option value="">All statuses</option>
+                                    <option value="active" {% if template.default_filters.status == 'active' %}selected{% endif %}>Active</option>
+                                    <option value="completed" {% if template.default_filters.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="pending" {% if template.default_filters.status == 'pending' %}selected{% endif %}>Pending</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="default_filters" id="defaultFiltersInput" value="{{ template.default_filters|default:'{}' }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Actions Card -->
+                <div class="card shadow-sm mb-4 position-sticky" style="top: 1rem;">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-sliders me-2"></i>Template Settings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Access Control -->
+                        <div class="mb-4">
+                            <label class="form-label">Access Level</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_public" value="false" id="access_private"
+                                       {% if not template.is_public %}checked{% endif %}>
+                                <label class="form-check-label" for="access_private">
+                                    <i class="bi bi-lock me-1"></i>Private
+                                    <small class="d-block text-muted">Only you can use this template</small>
+                                </label>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="radio" name="is_public" value="true" id="access_public"
+                                       {% if template.is_public %}checked{% endif %}>
+                                <label class="form-check-label" for="access_public">
+                                    <i class="bi bi-globe me-1"></i>Public
+                                    <small class="d-block text-muted">All users can use this template</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Summary -->
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-3">Template Summary</h6>
+                            <dl class="row mb-0 small">
+                                <dt class="col-5">Data Type</dt>
+                                <dd class="col-7" id="summaryType">-</dd>
+
+                                <dt class="col-5">Fields</dt>
+                                <dd class="col-7" id="summaryFields">0 selected</dd>
+
+                                <dt class="col-5">Format</dt>
+                                <dd class="col-7" id="summaryFormat">CSV</dd>
+                            </dl>
+                        </div>
+
+                        <hr>
+
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-2"></i>
+                                {% if template %}Save Changes{% else %}Create Template{% endif %}
+                            </button>
+                            {% if template %}
+                            <a href="{% url 'data_exchange:export_create' %}?template={{ template.id }}" class="btn btn-outline-success">
+                                <i class="bi bi-download me-2"></i>Use Template
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'data_exchange:export_list' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+
+                        {% if template %}
+                        <hr>
+                        <div class="text-center">
+                            <button type="button" class="btn btn-link text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="bi bi-trash me-1"></i>Delete Template
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if template %}
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the template <strong>{{ template.name }}</strong>?</p>
+                <p class="text-muted mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'data_exchange:export_template_delete' template.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.btn-check:checked + .btn-outline-secondary {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+}
+
+#selectedFieldsList li {
+    cursor: move;
+}
+
+#selectedFieldsList li:hover {
+    background-color: #f8f9fa;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectedFieldsList = document.getElementById('selectedFieldsList');
+    const includedFieldsInput = document.getElementById('includedFieldsInput');
+
+    // Handle data type change
+    document.getElementById('data_type').addEventListener('change', function() {
+        const selectedType = this.value;
+
+        // Hide all field options
+        document.querySelectorAll('.field-options').forEach(function(group) {
+            group.style.display = 'none';
+        });
+
+        // Show selected type's fields
+        if (selectedType) {
+            const targetGroup = document.querySelector(`.field-options[data-type="${selectedType}"]`);
+            if (targetGroup) {
+                targetGroup.style.display = 'block';
+                document.getElementById('selectTypeMessage').style.display = 'none';
+            }
+        } else {
+            document.getElementById('selectTypeMessage').style.display = 'block';
+        }
+
+        updateSummary();
+    });
+
+    // Handle adding fields
+    document.querySelectorAll('.available-field').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                addFieldToSelected(this.value);
+            } else {
+                removeFieldFromSelected(this.value);
+            }
+            updateIncludedFields();
+            updateSummary();
+        });
+    });
+
+    function addFieldToSelected(fieldName) {
+        // Remove empty message if present
+        const emptyMsg = document.getElementById('emptyMessage');
+        if (emptyMsg) emptyMsg.remove();
+
+        // Check if already exists
+        if (document.querySelector(`#selectedFieldsList li[data-field="${fieldName}"]`)) {
+            return;
+        }
+
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex align-items-center';
+        li.dataset.field = fieldName;
+        li.innerHTML = `
+            <i class="bi bi-grip-vertical text-muted me-3" style="cursor: grab;"></i>
+            <span class="flex-grow-1">${fieldName}</span>
+            <button type="button" class="btn btn-sm btn-link text-danger remove-field" title="Remove">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        `;
+
+        li.querySelector('.remove-field').addEventListener('click', function() {
+            removeFieldFromSelected(fieldName);
+            // Uncheck the corresponding checkbox
+            const checkbox = document.querySelector(`.available-field[value="${fieldName}"]`);
+            if (checkbox) checkbox.checked = false;
+            updateIncludedFields();
+            updateSummary();
+        });
+
+        selectedFieldsList.appendChild(li);
+    }
+
+    function removeFieldFromSelected(fieldName) {
+        const li = document.querySelector(`#selectedFieldsList li[data-field="${fieldName}"]`);
+        if (li) li.remove();
+
+        // Show empty message if no fields
+        if (selectedFieldsList.children.length === 0) {
+            const emptyLi = document.createElement('li');
+            emptyLi.className = 'list-group-item text-center text-muted';
+            emptyLi.id = 'emptyMessage';
+            emptyLi.textContent = 'No fields selected. Select fields from below.';
+            selectedFieldsList.appendChild(emptyLi);
+        }
+    }
+
+    function updateIncludedFields() {
+        const fields = [];
+        selectedFieldsList.querySelectorAll('li[data-field]').forEach(function(li) {
+            fields.push(li.dataset.field);
+        });
+        includedFieldsInput.value = fields.join(',');
+    }
+
+    // Select/Deselect all
+    document.getElementById('selectAllFields').addEventListener('click', function() {
+        const visibleGroup = document.querySelector('.field-options[style*="block"]');
+        if (visibleGroup) {
+            visibleGroup.querySelectorAll('.available-field').forEach(function(cb) {
+                cb.checked = true;
+                addFieldToSelected(cb.value);
+            });
+            updateIncludedFields();
+            updateSummary();
+        }
+    });
+
+    document.getElementById('deselectAllFields').addEventListener('click', function() {
+        const visibleGroup = document.querySelector('.field-options[style*="block"]');
+        if (visibleGroup) {
+            visibleGroup.querySelectorAll('.available-field').forEach(function(cb) {
+                cb.checked = false;
+            });
+        }
+        selectedFieldsList.innerHTML = `
+            <li class="list-group-item text-center text-muted" id="emptyMessage">
+                No fields selected. Select fields from below.
+            </li>
+        `;
+        updateIncludedFields();
+        updateSummary();
+    });
+
+    // Handle remove buttons for existing fields
+    document.querySelectorAll('.remove-field').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const li = this.closest('li');
+            const fieldName = li.dataset.field;
+            removeFieldFromSelected(fieldName);
+            const checkbox = document.querySelector(`.available-field[value="${fieldName}"]`);
+            if (checkbox) checkbox.checked = false;
+            updateIncludedFields();
+            updateSummary();
+        });
+    });
+
+    function updateSummary() {
+        // Data type
+        const dataType = document.getElementById('data_type');
+        document.getElementById('summaryType').textContent = dataType.value
+            ? dataType.options[dataType.selectedIndex].text
+            : '-';
+
+        // Fields count
+        const fieldCount = selectedFieldsList.querySelectorAll('li[data-field]').length;
+        document.getElementById('summaryFields').textContent = fieldCount + ' selected';
+
+        // Format
+        const format = document.querySelector('input[name="output_format"]:checked');
+        document.getElementById('summaryFormat').textContent = format ? format.value : 'CSV';
+    }
+
+    // Format change
+    document.querySelectorAll('input[name="output_format"]').forEach(function(radio) {
+        radio.addEventListener('change', updateSummary);
+    });
+
+    // Initialize
+    const dataTypeSelect = document.getElementById('data_type');
+    if (dataTypeSelect.value) {
+        dataTypeSelect.dispatchEvent(new Event('change'));
+    }
+    updateSummary();
+});
+</script>
+{% endblock %}

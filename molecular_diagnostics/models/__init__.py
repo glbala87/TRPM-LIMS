@@ -6,6 +6,7 @@ from .workflows import WorkflowDefinition, WorkflowStep, SampleHistory
 from .batches import InstrumentRun, PCRPlate, PlateWell, NGSLibrary, NGSPool
 from .qc import QCMetricDefinition, ControlSample, QCRecord
 from .results import MolecularResult, PCRResult, SequencingResult, VariantCall
+from .reflex_rules import ReflexRule, ReflexTestOrder
 
 __all__ = [
     'MolecularSampleType',
@@ -27,4 +28,6 @@ __all__ = [
     'PCRResult',
     'SequencingResult',
     'VariantCall',
+    'ReflexRule',
+    'ReflexTestOrder',
 ]

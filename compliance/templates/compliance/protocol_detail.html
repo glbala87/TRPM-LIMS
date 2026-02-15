@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ protocol.name }} - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'compliance:protocol_list' %}">Consent Protocols</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ protocol.name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                {{ protocol.name }}
+                <span class="badge bg-light text-dark border ms-2">v{{ protocol.version }}</span>
+            </h1>
+            <div class="mt-2">
+                <span class="badge
+                    {% if protocol.protocol_type == 'GENERAL' %}bg-primary
+                    {% elif protocol.protocol_type == 'GENETIC' %}bg-info
+                    {% elif protocol.protocol_type == 'BIOBANK' %}bg-success
+                    {% elif protocol.protocol_type == 'CLINICAL_TRIAL' %}bg-warning text-dark
+                    {% elif protocol.protocol_type == 'DATA_SHARING' %}bg-secondary
+                    {% elif protocol.protocol_type == 'PEDIATRIC' %}bg-pink
+                    {% elif protocol.protocol_type == 'EMERGENCY' %}bg-danger
+                    {% else %}bg-dark
+                    {% endif %} me-2">
+                    {{ protocol.get_protocol_type_display }}
+                </span>
+                {% if protocol.is_active and not protocol.is_expired %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle-fill me-1"></i> Active
+                    </span>
+                {% elif protocol.is_expired %}
+                    <span class="badge bg-danger">
+                        <i class="bi bi-x-circle-fill me-1"></i> Expired
+                    </span>
+                {% else %}
+                    <span class="badge bg-secondary">
+                        <i class="bi bi-pause-circle-fill me-1"></i> Inactive
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'compliance:protocol_edit' protocol.pk %}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i> Edit
+            </a>
+            <a href="{% url 'compliance:consent_create' %}?protocol={{ protocol.pk }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> New Consent
+            </a>
+        </div>
+    </div>
+
+    <!-- Warning Alerts -->
+    {% if protocol.is_irb_expired %}
+    <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+        <div>
+            <strong>IRB Approval Expired!</strong>
+            The IRB approval for this protocol expired on {{ protocol.irb_expiration_date|date:"F d, Y" }}.
+            No new consents should be obtained using this protocol until IRB renewal is complete.
+        </div>
+    </div>
+    {% elif protocol.irb_expiration_date %}
+        {% with days_until_expiry=protocol.irb_expiration_date|timeuntil %}
+        {% if "day" in days_until_expiry and days_until_expiry|slice:":2"|add:"0" <= "30" %}
+        <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-clock-fill fs-4 me-3"></i>
+            <div>
+                <strong>IRB Approval Expiring Soon!</strong>
+                The IRB approval will expire on {{ protocol.irb_expiration_date|date:"F d, Y" }} ({{ days_until_expiry }}).
+                Please initiate the renewal process.
+            </div>
+        </div>
+        {% endif %}
+        {% endwith %}
+    {% endif %}
+
+    {% if protocol.is_expired %}
+    <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
+        <i class="bi bi-exclamation-octagon-fill fs-4 me-3"></i>
+        <div>
+            <strong>Protocol Expired!</strong>
+            This protocol expired on {{ protocol.expiration_date|date:"F d, Y" }}.
+            New consents cannot be obtained using this protocol.
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Description Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-text me-2"></i> Description
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if protocol.description %}
+                        <p class="mb-0">{{ protocol.description|linebreaks }}</p>
+                    {% else %}
+                        <p class="text-muted mb-0">No description provided.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- IRB Information Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-shield-check me-2"></i> IRB Approval Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="text-muted small">IRB Number</label>
+                            <p class="fw-semibold mb-3">
+                                {% if protocol.irb_number %}
+                                    {{ protocol.irb_number }}
+                                {% else %}
+                                    <span class="text-muted">Not specified</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted small">Approval Date</label>
+                            <p class="fw-semibold mb-3">
+                                {% if protocol.irb_approval_date %}
+                                    {{ protocol.irb_approval_date|date:"F d, Y" }}
+                                {% else %}
+                                    <span class="text-muted">Not specified</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted small">Expiration Date</label>
+                            <p class="fw-semibold mb-3">
+                                {% if protocol.irb_expiration_date %}
+                                    {% if protocol.is_irb_expired %}
+                                        <span class="text-danger">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                            {{ protocol.irb_expiration_date|date:"F d, Y" }} (Expired)
+                                        </span>
+                                    {% else %}
+                                        <span class="text-success">
+                                            {{ protocol.irb_expiration_date|date:"F d, Y" }}
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">Not specified</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Requirements Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-check me-2"></i> Consent Requirements
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-3">
+                                {% if protocol.requires_witness %}
+                                    <i class="bi bi-check-circle-fill text-success fs-4 me-2"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle text-muted fs-4 me-2"></i>
+                                {% endif %}
+                                <div>
+                                    <strong>Witness Required</strong>
+                                    <br><small class="text-muted">
+                                        {% if protocol.requires_witness %}Yes{% else %}No{% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-3">
+                                {% if protocol.requires_legal_representative %}
+                                    <i class="bi bi-check-circle-fill text-success fs-4 me-2"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle text-muted fs-4 me-2"></i>
+                                {% endif %}
+                                <div>
+                                    <strong>Legal Representative</strong>
+                                    <br><small class="text-muted">
+                                        {% if protocol.requires_legal_representative %}Allowed{% else %}Not allowed{% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-person-fill text-primary fs-4 me-2"></i>
+                                <div>
+                                    <strong>Minimum Age</strong>
+                                    <br><small class="text-muted">{{ protocol.minimum_age }} years</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Consents Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-people me-2"></i> Recent Consents
+                    </h5>
+                    <a href="{% url 'compliance:consent_list' %}?protocol={{ protocol.pk }}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_consents %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Patient</th>
+                                    <th>Status</th>
+                                    <th>Consent Date</th>
+                                    <th>Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consent in recent_consents %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'compliance:consent_detail' consent.pk %}" class="text-decoration-none">
+                                            {{ consent.patient }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge
+                                            {% if consent.status == 'PENDING' %}bg-warning text-dark
+                                            {% elif consent.status == 'CONSENTED' %}bg-success
+                                            {% elif consent.status == 'DECLINED' %}bg-secondary
+                                            {% elif consent.status == 'WITHDRAWN' %}bg-danger
+                                            {% elif consent.status == 'EXPIRED' %}bg-dark
+                                            {% endif %}">
+                                            {{ consent.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if consent.consent_date %}
+                                            {{ consent.consent_date|date:"M d, Y" }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ consent.get_consent_method_display }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox display-6 text-muted"></i>
+                        <p class="text-muted mt-2 mb-0">No consents recorded for this protocol yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Statistics Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bar-chart me-2"></i> Statistics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <span>Total Consents</span>
+                        <span class="badge bg-primary fs-6">{{ stats.total|default:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <span>Active Consents</span>
+                        <span class="badge bg-success fs-6">{{ stats.active|default:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <span>Pending</span>
+                        <span class="badge bg-warning text-dark fs-6">{{ stats.pending|default:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <span>Declined</span>
+                        <span class="badge bg-secondary fs-6">{{ stats.declined|default:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Withdrawn</span>
+                        <span class="badge bg-danger fs-6">{{ stats.withdrawn|default:0 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Protocol Details Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i> Protocol Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5 text-muted">Effective Date</dt>
+                        <dd class="col-sm-7">{{ protocol.effective_date|date:"F d, Y" }}</dd>
+
+                        <dt class="col-sm-5 text-muted">Expiration Date</dt>
+                        <dd class="col-sm-7">
+                            {% if protocol.expiration_date %}
+                                {{ protocol.expiration_date|date:"F d, Y" }}
+                            {% else %}
+                                <span class="text-muted">No expiration</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5 text-muted">Created</dt>
+                        <dd class="col-sm-7">{{ protocol.created_at|date:"M d, Y" }}</dd>
+
+                        <dt class="col-sm-5 text-muted">Created By</dt>
+                        <dd class="col-sm-7">
+                            {% if protocol.created_by %}
+                                {{ protocol.created_by.get_full_name|default:protocol.created_by.username }}
+                            {% else %}
+                                <span class="text-muted">Unknown</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5 text-muted">Last Updated</dt>
+                        <dd class="col-sm-7 mb-0">{{ protocol.updated_at|date:"M d, Y H:i" }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Document Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-earmark-pdf me-2"></i> Protocol Document
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if protocol.document %}
+                        <div class="d-grid">
+                            <a href="{{ protocol.document.url }}" class="btn btn-outline-primary" target="_blank">
+                                <i class="bi bi-download me-2"></i> Download Document
+                            </a>
+                        </div>
+                        <small class="text-muted d-block mt-2 text-center">
+                            {{ protocol.document.name|slice:"-30:" }}
+                        </small>
+                    {% else %}
+                        <p class="text-muted text-center mb-0">
+                            <i class="bi bi-file-earmark-x display-6 d-block mb-2"></i>
+                            No document uploaded
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions Card -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightning me-2"></i> Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <a href="{% url 'compliance:consent_create' %}?protocol={{ protocol.pk }}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-2"></i> Record New Consent
+                    </a>
+                    <a href="{% url 'compliance:protocol_edit' protocol.pk %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-pencil me-2"></i> Edit Protocol
+                    </a>
+                    {% if protocol.is_active %}
+                    <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#deactivateModal">
+                        <i class="bi bi-pause-circle me-2"></i> Deactivate Protocol
+                    </button>
+                    {% else %}
+                    <form method="post" action="{% url 'compliance:protocol_activate' protocol.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-success w-100">
+                            <i class="bi bi-play-circle me-2"></i> Activate Protocol
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate Modal -->
+<div class="modal fade" id="deactivateModal" tabindex="-1" aria-labelledby="deactivateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deactivateModalLabel">Deactivate Protocol</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to deactivate this protocol?</p>
+                <p class="text-muted small">
+                    Deactivating will prevent new consents from being obtained using this protocol.
+                    Existing consents will remain valid.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'compliance:protocol_deactivate' protocol.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning">Deactivate</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{% url 'data_exchange:import_list' %}">Imports</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ import_job.original_filename }}</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0">Import Job Details</h1>
+        </div>
+        <div>
+            {% if import_job.status == 'VALIDATED' %}
+                <a href="{% url 'data_exchange:import_confirm' import_job.id %}" class="btn btn-success">
+                    <i class="bi bi-check-lg me-2"></i>Confirm Import
+                </a>
+            {% endif %}
+            {% if import_job.status == 'PENDING' or import_job.status == 'VALIDATED' %}
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                    <i class="bi bi-x-lg me-2"></i>Cancel
+                </button>
+            {% endif %}
+            <a href="{% url 'data_exchange:import_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to List
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Status Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            {% if import_job.status == 'COMPLETED' %}
+                                <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                    <i class="bi bi-check-lg fs-2"></i>
+                                </div>
+                            {% elif import_job.status == 'FAILED' %}
+                                <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                    <i class="bi bi-x-lg fs-2"></i>
+                                </div>
+                            {% elif import_job.status == 'IMPORTING' or import_job.status == 'VALIDATING' %}
+                                <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            {% elif import_job.status == 'VALIDATED' %}
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                    <i class="bi bi-check2-circle fs-2"></i>
+                                </div>
+                            {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;">
+                                    <i class="bi bi-clock fs-2"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col">
+                            <h4 class="mb-1">{{ import_job.get_status_display }}</h4>
+                            <p class="text-muted mb-0">
+                                {% if import_job.status == 'COMPLETED' %}
+                                    Import completed successfully on {{ import_job.completed_at|date:"M d, Y H:i" }}
+                                {% elif import_job.status == 'FAILED' %}
+                                    Import failed. Please check the error log below.
+                                {% elif import_job.status == 'IMPORTING' %}
+                                    Currently importing records...
+                                {% elif import_job.status == 'VALIDATING' %}
+                                    Validating file contents...
+                                {% elif import_job.status == 'VALIDATED' %}
+                                    File validated. Ready to import.
+                                {% else %}
+                                    Waiting to process...
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% if import_job.status == 'IMPORTING' or import_job.status == 'VALIDATING' %}
+                        <div class="col-auto">
+                            <div class="text-end">
+                                <span class="fs-3 fw-bold text-primary">{{ import_job.progress_percentage }}%</span>
+                                <br>
+                                <small class="text-muted">{{ import_job.processed_rows }} / {{ import_job.total_rows }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if import_job.status == 'IMPORTING' or import_job.status == 'VALIDATING' %}
+                    <div class="progress mt-3" style="height: 10px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             role="progressbar"
+                             style="width: {{ import_job.progress_percentage }}%"
+                             aria-valuenow="{{ import_job.progress_percentage }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Summary Statistics -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bar-chart me-2"></i>Summary Statistics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <div class="fs-2 fw-bold text-primary">{{ import_job.total_rows }}</div>
+                                <small class="text-muted">Total Rows</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <div class="fs-2 fw-bold text-success">{{ import_job.successful_rows }}</div>
+                                <small class="text-muted">Successful</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <div class="fs-2 fw-bold text-danger">{{ import_job.failed_rows }}</div>
+                                <small class="text-muted">Failed</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <div class="fs-2 fw-bold text-warning">{{ import_job.skipped_rows }}</div>
+                                <small class="text-muted">Skipped</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if import_job.processed_rows > 0 %}
+                    <div class="mt-4">
+                        <h6 class="mb-2">Success Rate</h6>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-success"
+                                 role="progressbar"
+                                 style="width: {{ import_job.success_rate }}%"
+                                 aria-valuenow="{{ import_job.success_rate }}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                {{ import_job.success_rate }}% Success
+                            </div>
+                            {% if import_job.failed_rows > 0 %}
+                            <div class="progress-bar bg-danger"
+                                 role="progressbar"
+                                 style="width: {% widthratio import_job.failed_rows import_job.processed_rows 100 %}%">
+                                {% widthratio import_job.failed_rows import_job.processed_rows 100 %}% Failed
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Imported Records Table -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-ul me-2"></i>Imported Records
+                    </h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check" name="recordFilter" id="filterAll" autocomplete="off" checked>
+                        <label class="btn btn-outline-secondary" for="filterAll">All</label>
+
+                        <input type="radio" class="btn-check" name="recordFilter" id="filterSuccess" autocomplete="off">
+                        <label class="btn btn-outline-success" for="filterSuccess">Success</label>
+
+                        <input type="radio" class="btn-check" name="recordFilter" id="filterFailed" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="filterFailed">Failed</label>
+
+                        <input type="radio" class="btn-check" name="recordFilter" id="filterSkipped" autocomplete="off">
+                        <label class="btn btn-outline-warning" for="filterSkipped">Skipped</label>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">Row</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Data</th>
+                                    <th scope="col">Error/Note</th>
+                                    <th scope="col">Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in imported_records %}
+                                <tr class="record-row" data-status="{{ record.status }}">
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ record.row_number }}</span>
+                                    </td>
+                                    <td>
+                                        {% if record.status == 'SUCCESS' %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>Success
+                                            </span>
+                                        {% elif record.status == 'FAILED' %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-x-circle me-1"></i>Failed
+                                            </span>
+                                        {% elif record.status == 'SKIPPED' %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="bi bi-skip-forward me-1"></i>Skipped
+                                            </span>
+                                        {% elif record.status == 'DUPLICATE' %}
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-files me-1"></i>Duplicate
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button"
+                                                class="btn btn-sm btn-link p-0"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#dataModal{{ record.id }}">
+                                            View Data
+                                        </button>
+                                    </td>
+                                    <td>
+                                        {% if record.error_message %}
+                                            <span class="text-danger small">{{ record.error_message|truncatewords:10 }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ record.created_at|date:"H:i:s" }}</small>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        No records to display
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if records_page.has_other_pages %}
+                <div class="card-footer bg-white">
+                    <nav aria-label="Records pagination">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            {% if records_page.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ records_page.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ records_page.number }} / {{ records_page.paginator.num_pages }}</span>
+                            </li>
+                            {% if records_page.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ records_page.next_page_number }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Error Log -->
+            {% if import_job.import_errors or import_job.validation_errors %}
+            <div class="card shadow-sm mb-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Error Log
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if import_job.validation_errors %}
+                    <h6 class="text-danger">Validation Errors</h6>
+                    <ul class="list-group list-group-flush mb-3">
+                        {% for error in import_job.validation_errors %}
+                        <li class="list-group-item list-group-item-danger">
+                            <i class="bi bi-x-circle me-2"></i>
+                            {% if error.row %}Row {{ error.row }}: {% endif %}
+                            {{ error.message|default:error }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    {% if import_job.import_errors %}
+                    <h6 class="text-danger">Import Errors</h6>
+                    <ul class="list-group list-group-flush">
+                        {% for error in import_job.import_errors %}
+                        <li class="list-group-item list-group-item-danger">
+                            <i class="bi bi-x-circle me-2"></i>
+                            {% if error.row %}Row {{ error.row }}: {% endif %}
+                            {{ error.message|default:error }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Warnings -->
+            {% if import_job.warnings %}
+            <div class="card shadow-sm mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-exclamation-circle me-2"></i>Warnings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for warning in import_job.warnings %}
+                        <li class="list-group-item list-group-item-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            {% if warning.row %}Row {{ warning.row }}: {% endif %}
+                            {{ warning.message|default:warning }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- File Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-earmark me-2"></i>File Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Filename</dt>
+                        <dd class="col-sm-7">{{ import_job.original_filename }}</dd>
+
+                        <dt class="col-sm-5">Format</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-secondary">{{ import_job.file_format }}</span>
+                        </dd>
+
+                        <dt class="col-sm-5">Data Type</dt>
+                        <dd class="col-sm-7">
+                            <span class="badge bg-info text-dark">{{ import_job.get_data_type_display }}</span>
+                        </dd>
+
+                        <dt class="col-sm-5">Total Rows</dt>
+                        <dd class="col-sm-7">{{ import_job.total_rows }}</dd>
+                    </dl>
+
+                    {% if import_job.source_file %}
+                    <hr>
+                    <a href="{{ import_job.source_file.url }}" class="btn btn-sm btn-outline-primary w-100" download>
+                        <i class="bi bi-download me-2"></i>Download Original File
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Import Options -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>Import Options
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            {% if import_job.skip_duplicates %}
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            {% else %}
+                                <i class="bi bi-x-circle-fill text-danger me-2"></i>
+                            {% endif %}
+                            Skip duplicates
+                        </li>
+                        <li class="mb-2">
+                            {% if import_job.update_existing %}
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            {% else %}
+                                <i class="bi bi-x-circle-fill text-danger me-2"></i>
+                            {% endif %}
+                            Update existing records
+                        </li>
+                        <li>
+                            {% if import_job.dry_run %}
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            {% else %}
+                                <i class="bi bi-x-circle-fill text-danger me-2"></i>
+                            {% endif %}
+                            Dry run (validation only)
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Column Mapping -->
+            {% if import_job.column_mapping %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-arrows-angle-expand me-2"></i>Column Mapping
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Source</th>
+                                <th>Target</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for source, target in import_job.column_mapping.items %}
+                            <tr>
+                                <td><code>{{ source }}</code></td>
+                                <td><code>{{ target }}</code></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Audit Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Audit Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Created By</dt>
+                        <dd class="col-sm-7">
+                            {% if import_job.created_by %}
+                                {{ import_job.created_by.get_full_name|default:import_job.created_by.username }}
+                            {% else %}
+                                <span class="text-muted">System</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-5">Created At</dt>
+                        <dd class="col-sm-7">{{ import_job.created_at|date:"M d, Y H:i" }}</dd>
+
+                        {% if import_job.started_at %}
+                        <dt class="col-sm-5">Started At</dt>
+                        <dd class="col-sm-7">{{ import_job.started_at|date:"M d, Y H:i" }}</dd>
+                        {% endif %}
+
+                        {% if import_job.completed_at %}
+                        <dt class="col-sm-5">Completed At</dt>
+                        <dd class="col-sm-7">{{ import_job.completed_at|date:"M d, Y H:i" }}</dd>
+                        {% endif %}
+
+                        <dt class="col-sm-5">Job ID</dt>
+                        <dd class="col-sm-7">
+                            <code class="small">{{ import_job.id }}</code>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+{% if import_job.status == 'PENDING' or import_job.status == 'VALIDATED' %}
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelModalLabel">Cancel Import Job</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this import job?</p>
+                <p class="text-muted mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form method="post" action="{% url 'data_exchange:import_cancel' import_job.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Cancel Import</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Data Modals for each record -->
+{% for record in imported_records %}
+<div class="modal fade" id="dataModal{{ record.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Row {{ record.row_number }} Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre class="bg-light p-3 rounded"><code>{{ record.raw_data|pprint }}</code></pre>
+                {% if record.error_message %}
+                <div class="alert alert-danger mt-3">
+                    <strong>Error:</strong> {{ record.error_message }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+// Record filtering
+document.querySelectorAll('input[name="recordFilter"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        const filter = this.id.replace('filter', '').toUpperCase();
+        const rows = document.querySelectorAll('.record-row');
+
+        rows.forEach(function(row) {
+            if (filter === 'ALL' || row.dataset.status === filter) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Auto-refresh for running imports
+document.addEventListener('DOMContentLoaded', function() {
+    const spinner = document.querySelector('.spinner-border');
+    if (spinner) {
+        setTimeout(function() {
+            location.reload();
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}

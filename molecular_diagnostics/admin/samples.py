@@ -49,7 +49,7 @@ class MolecularSampleAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Aliquot Information', {
-            'fields': ('aliquot_of', 'aliquot_number'),
+            'fields': ('parent_sample', 'derivation_type', 'aliquot_number'),
             'classes': ('collapse',)
         }),
         ('Notes', {
@@ -61,7 +61,7 @@ class MolecularSampleAdmin(admin.ModelAdmin):
         }),
     )
 
-    autocomplete_fields = ['lab_order', 'sample_type', 'test_panel', 'storage_location', 'aliquot_of']
+    autocomplete_fields = ['lab_order', 'sample_type', 'test_panel', 'storage_location', 'parent_sample']
 
     actions = ['mark_extracted', 'mark_amplified', 'mark_analyzed', 'mark_reported']
 

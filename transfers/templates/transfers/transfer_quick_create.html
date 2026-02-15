@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Quick Transfer - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'transfers:transfer_list' %}">Transfers</a></li>
+                    <li class="breadcrumb-item active">Quick Transfer</li>
+                </ol>
+            </nav>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-lightning"></i> Quick Sample Transfer
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Quickly create a transfer by scanning or entering sample IDs.
+                        This is ideal for rapid transfers of multiple samples.
+                    </p>
+
+                    <form method="post" id="quick-transfer-form">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Location Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.source_location.id_for_label }}" class="form-label">
+                                    <i class="bi bi-geo-alt"></i> From Location <span class="text-danger">*</span>
+                                </label>
+                                <select name="{{ form.source_location.name }}"
+                                        id="{{ form.source_location.id_for_label }}"
+                                        class="form-select form-select-lg {% if form.source_location.errors %}is-invalid{% endif %}">
+                                    <option value="">Select source...</option>
+                                    {% for location in locations %}
+                                    <option value="{{ location.id }}"
+                                            {% if form.source_location.value == location.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ location.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.source_location.errors %}
+                                <div class="invalid-feedback">{{ form.source_location.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.destination_location.id_for_label }}" class="form-label">
+                                    <i class="bi bi-geo-alt-fill"></i> To Location <span class="text-danger">*</span>
+                                </label>
+                                <select name="{{ form.destination_location.name }}"
+                                        id="{{ form.destination_location.id_for_label }}"
+                                        class="form-select form-select-lg {% if form.destination_location.errors %}is-invalid{% endif %}">
+                                    <option value="">Select destination...</option>
+                                    {% for location in locations %}
+                                    <option value="{{ location.id }}"
+                                            {% if form.destination_location.value == location.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ location.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.destination_location.errors %}
+                                <div class="invalid-feedback">{{ form.destination_location.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Sample ID Entry -->
+                        <div class="mb-4">
+                            <label for="sample-input" class="form-label">
+                                <i class="bi bi-upc-scan"></i> Sample IDs <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group mb-2">
+                                <input type="text"
+                                       id="sample-input"
+                                       class="form-control form-control-lg"
+                                       placeholder="Scan or type sample ID and press Enter"
+                                       autofocus>
+                                <button type="button" id="add-sample-btn" class="btn btn-outline-primary">
+                                    <i class="bi bi-plus-lg"></i> Add
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                Enter one sample ID at a time, or paste multiple IDs separated by commas or newlines
+                            </small>
+
+                            <!-- Sample List -->
+                            <div id="sample-list" class="mt-3">
+                                <div class="list-group" id="added-samples">
+                                    <!-- Samples will be added here dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Hidden input for sample IDs -->
+                            <input type="hidden" name="sample_ids" id="sample-ids-input" value="">
+
+                            {% if form.sample_ids.errors %}
+                            <div class="text-danger mt-2">{{ form.sample_ids.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Quick Options -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.shipment_conditions.id_for_label }}" class="form-label">
+                                    Shipment Conditions
+                                </label>
+                                <select name="{{ form.shipment_conditions.name }}"
+                                        id="{{ form.shipment_conditions.id_for_label }}"
+                                        class="form-select">
+                                    <option value="AMBIENT">Ambient</option>
+                                    <option value="REFRIGERATED">Refrigerated (2-8C)</option>
+                                    <option value="FROZEN">Frozen (-20C)</option>
+                                    <option value="DEEP_FROZEN">Deep Frozen (-80C)</option>
+                                    <option value="LIQUID_NITROGEN">Liquid Nitrogen</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox"
+                                           name="dispatch_immediately" id="dispatch_immediately">
+                                    <label class="form-check-label" for="dispatch_immediately">
+                                        Dispatch immediately after creation
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Panel -->
+                        <div class="card bg-light mb-4" id="summary-panel" style="display: none;">
+                            <div class="card-body">
+                                <h6 class="card-title mb-3">Transfer Summary</h6>
+                                <div class="row">
+                                    <div class="col-4 text-center">
+                                        <div class="display-6" id="sample-count">0</div>
+                                        <small class="text-muted">Samples</small>
+                                    </div>
+                                    <div class="col-4 text-center border-start border-end">
+                                        <div id="source-summary" class="text-truncate">-</div>
+                                        <small class="text-muted">From</small>
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <div id="destination-summary" class="text-truncate">-</div>
+                                        <small class="text-muted">To</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                            <a href="{% url 'transfers:transfer_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <div>
+                                <a href="{% url 'transfers:transfer_create' %}" class="btn btn-outline-primary me-2">
+                                    <i class="bi bi-sliders"></i> Full Form
+                                </a>
+                                <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" disabled>
+                                    <i class="bi bi-check-lg"></i> Create Transfer
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Recent Transfers Quick Access -->
+            {% if recent_transfers %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-clock-history"></i> Your Recent Transfers</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for transfer in recent_transfers %}
+                    <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ transfer.transfer_number }}</strong>
+                            <br>
+                            <small class="text-muted">
+                                {{ transfer.source_location.name }} -> {{ transfer.destination_location.name }}
+                            </small>
+                        </div>
+                        <span class="badge
+                            {% if transfer.status == 'PENDING' %}bg-warning text-dark
+                            {% elif transfer.status == 'IN_TRANSIT' %}bg-info
+                            {% elif transfer.status == 'RECEIVED' %}bg-success
+                            {% else %}bg-secondary{% endif %}">
+                            {{ transfer.status }}
+                        </span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sampleInput = document.getElementById('sample-input');
+    const addBtn = document.getElementById('add-sample-btn');
+    const samplesList = document.getElementById('added-samples');
+    const hiddenInput = document.getElementById('sample-ids-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const summaryPanel = document.getElementById('summary-panel');
+    const sampleCount = document.getElementById('sample-count');
+    const sourceSelect = document.getElementById('{{ form.source_location.id_for_label }}');
+    const destSelect = document.getElementById('{{ form.destination_location.id_for_label }}');
+    const sourceSummary = document.getElementById('source-summary');
+    const destSummary = document.getElementById('destination-summary');
+
+    let samples = [];
+
+    function updateUI() {
+        // Update hidden input
+        hiddenInput.value = samples.join(',');
+
+        // Update sample count
+        sampleCount.textContent = samples.length;
+
+        // Update summary panel
+        summaryPanel.style.display = samples.length > 0 ? 'block' : 'none';
+
+        // Update location summaries
+        sourceSummary.textContent = sourceSelect.options[sourceSelect.selectedIndex]?.text || '-';
+        destSummary.textContent = destSelect.options[destSelect.selectedIndex]?.text || '-';
+
+        // Enable/disable submit button
+        submitBtn.disabled = samples.length === 0 || !sourceSelect.value || !destSelect.value;
+
+        // Render sample list
+        renderSampleList();
+    }
+
+    function renderSampleList() {
+        samplesList.innerHTML = '';
+        samples.forEach((sample, index) => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+            item.innerHTML = `
+                <div>
+                    <i class="bi bi-vial text-primary me-2"></i>
+                    <span class="fw-medium">${sample}</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-sample" data-index="${index}">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+            samplesList.appendChild(item);
+        });
+
+        // Attach remove handlers
+        document.querySelectorAll('.remove-sample').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idx = parseInt(this.dataset.index);
+                samples.splice(idx, 1);
+                updateUI();
+            });
+        });
+    }
+
+    function addSample(value) {
+        // Parse input - handle comma and newline separated values
+        const ids = value.split(/[,\n]+/)
+            .map(id => id.trim().toUpperCase())
+            .filter(id => id && !samples.includes(id));
+
+        samples.push(...ids);
+        updateUI();
+        sampleInput.value = '';
+        sampleInput.focus();
+    }
+
+    // Event listeners
+    addBtn.addEventListener('click', () => addSample(sampleInput.value));
+
+    sampleInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addSample(this.value);
+        }
+    });
+
+    // Handle paste event for multiple samples
+    sampleInput.addEventListener('paste', function(e) {
+        setTimeout(() => addSample(this.value), 100);
+    });
+
+    // Location change handlers
+    sourceSelect.addEventListener('change', updateUI);
+    destSelect.addEventListener('change', updateUI);
+
+    // Initial UI update
+    updateUI();
+});
+</script>
+{% endblock %}

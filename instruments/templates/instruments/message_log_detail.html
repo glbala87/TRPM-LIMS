@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Message Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'instruments:dashboard' %}">Instruments</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'instruments:message_log_list' %}">Message Logs</a></li>
+            <li class="breadcrumb-item active">Message #{{ message.pk }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                {% if message.direction == 'INBOUND' %}
+                <span class="badge bg-primary me-2">
+                    <i class="bi bi-arrow-down-left"></i> INBOUND
+                </span>
+                {% else %}
+                <span class="badge bg-success me-2">
+                    <i class="bi bi-arrow-up-right"></i> OUTBOUND
+                </span>
+                {% endif %}
+                {{ message.get_message_type_display }}
+            </h1>
+            <p class="text-muted mb-0">
+                From: {{ message.connection.instrument.name }} - {{ message.connection.name }}
+            </p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'instruments:message_log_list' %}?connection={{ message.connection.pk }}"
+               class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Logs
+            </a>
+            <button class="btn btn-outline-primary" id="copyRawMessage">
+                <i class="bi bi-clipboard me-1"></i> Copy Raw
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column - Message Content -->
+        <div class="col-lg-8">
+            <!-- Raw Message -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-code me-2"></i> Raw Message</span>
+                    <div>
+                        {% if message.checksum %}
+                        <span class="me-2">
+                            Checksum: <code>{{ message.checksum }}</code>
+                            {% if message.checksum_valid %}
+                            <span class="badge bg-success">Valid</span>
+                            {% elif message.checksum_valid == False %}
+                            <span class="badge bg-danger">Invalid</span>
+                            {% endif %}
+                        </span>
+                        {% endif %}
+                        <span class="badge bg-secondary">{{ message.raw_message|length }} bytes</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <pre class="mb-0 p-3 font-monospace bg-dark text-light"
+                         style="white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto;"
+                         id="rawMessageContent">{{ message.raw_message }}</pre>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary active" id="viewRaw">Raw</button>
+                        <button class="btn btn-outline-secondary" id="viewHex">Hex</button>
+                        <button class="btn btn-outline-secondary" id="viewEscaped">Escaped</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parsed Data -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-diagram-3 me-2"></i> Parsed Data</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="expandAll">
+                        <i class="bi bi-arrows-expand"></i> Expand All
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if message.parsed_data %}
+                    <div id="jsonTree" class="font-monospace small">
+                        <!-- JSON tree will be rendered here -->
+                    </div>
+                    <script>
+                        const parsedData = {{ message.parsed_data|safe }};
+                    </script>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox display-4 d-block mb-3"></i>
+                        No parsed data available.
+                        <br>
+                        <small>Message may not have been processed yet or parsing failed.</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Error Details (if any) -->
+            {% if message.error_message %}
+            <div class="card mb-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle me-2"></i> Processing Error
+                </div>
+                <div class="card-body">
+                    <pre class="mb-0 font-monospace text-danger" style="white-space: pre-wrap;">{{ message.error_message }}</pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column - Metadata -->
+        <div class="col-lg-4">
+            <!-- Status Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-info-circle me-2"></i> Processing Status
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        {% if message.status == 'ERROR' %}
+                        <span class="badge bg-danger fs-5 px-4 py-2">
+                            <i class="bi bi-x-circle me-2"></i>{{ message.get_status_display }}
+                        </span>
+                        {% elif message.status == 'PROCESSED' %}
+                        <span class="badge bg-success fs-5 px-4 py-2">
+                            <i class="bi bi-check-circle me-2"></i>{{ message.get_status_display }}
+                        </span>
+                        {% elif message.status == 'SENT' or message.status == 'ACKNOWLEDGED' %}
+                        <span class="badge bg-info fs-5 px-4 py-2">
+                            <i class="bi bi-check2-all me-2"></i>{{ message.get_status_display }}
+                        </span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark fs-5 px-4 py-2">
+                            <i class="bi bi-hourglass-split me-2"></i>{{ message.get_status_display }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Status Timeline -->
+                    <div class="timeline small">
+                        <div class="timeline-item {% if message.timestamp %}text-success{% endif %}">
+                            <i class="bi bi-circle-fill"></i>
+                            <span>Received</span>
+                            <small class="text-muted ms-auto">{{ message.timestamp|date:"H:i:s.u" }}</small>
+                        </div>
+                        {% if message.status in 'PARSED,PROCESSED' %}
+                        <div class="timeline-item text-success">
+                            <i class="bi bi-circle-fill"></i>
+                            <span>Parsed</span>
+                        </div>
+                        {% endif %}
+                        {% if message.processed_at %}
+                        <div class="timeline-item text-success">
+                            <i class="bi bi-circle-fill"></i>
+                            <span>Processed</span>
+                            <small class="text-muted ms-auto">{{ message.processed_at|date:"H:i:s.u" }}</small>
+                        </div>
+                        {% endif %}
+                        {% if message.status == 'ERROR' %}
+                        <div class="timeline-item text-danger">
+                            <i class="bi bi-x-circle-fill"></i>
+                            <span>Error</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection Info -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-plug me-2"></i> Connection
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Instrument</span>
+                        <a href="{% url 'instruments:connection_detail' message.connection.pk %}">
+                            {{ message.connection.instrument.name }}
+                        </a>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Connection</span>
+                        <span>{{ message.connection.name }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Protocol</span>
+                        <span class="badge bg-secondary">{{ message.connection.get_protocol_display }}</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Related Records -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-link-45deg me-2"></i> Related Records
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Sample ID</span>
+                        {% if message.related_sample_id %}
+                        <a href="#">{{ message.related_sample_id }}</a>
+                        {% else %}
+                        <span class="text-muted">--</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Patient ID</span>
+                        {% if message.related_patient_id %}
+                        <a href="#">{{ message.related_patient_id }}</a>
+                        {% else %}
+                        <span class="text-muted">--</span>
+                        {% endif %}
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Order ID</span>
+                        {% if message.related_order_id %}
+                        <a href="#">{{ message.related_order_id }}</a>
+                        {% else %}
+                        <span class="text-muted">--</span>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Timestamps -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <i class="bi bi-clock me-2"></i> Timestamps
+                </div>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Received</span>
+                        <span>{{ message.timestamp|date:"Y-m-d H:i:s.u" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Processed</span>
+                        <span>{{ message.processed_at|date:"Y-m-d H:i:s.u"|default:"--" }}</span>
+                    </li>
+                    {% if message.processed_at and message.timestamp %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Processing Time</span>
+                        <span>
+                            {% widthratio message.processed_at|date:"U"|add:"-"|add:message.timestamp|date:"U" 1 1 as diff %}
+                            {{ diff }} ms
+                        </span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="d-flex justify-content-between mt-4">
+        {% if prev_message %}
+        <a href="{% url 'instruments:message_log_detail' prev_message.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-chevron-left me-1"></i> Previous Message
+        </a>
+        {% else %}
+        <span></span>
+        {% endif %}
+
+        {% if next_message %}
+        <a href="{% url 'instruments:message_log_detail' next_message.pk %}" class="btn btn-outline-secondary">
+            Next Message <i class="bi bi-chevron-right ms-1"></i>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 5px;
+    bottom: 5px;
+    width: 2px;
+    background: #dee2e6;
+}
+.timeline-item {
+    position: relative;
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.timeline-item i {
+    position: absolute;
+    left: -26px;
+    font-size: 10px;
+}
+.json-tree .json-key {
+    color: #0d6efd;
+}
+.json-tree .json-string {
+    color: #198754;
+}
+.json-tree .json-number {
+    color: #6f42c1;
+}
+.json-tree .json-boolean {
+    color: #dc3545;
+}
+.json-tree .json-null {
+    color: #6c757d;
+}
+.json-tree .collapsible {
+    cursor: pointer;
+}
+.json-tree .collapsible::before {
+    content: '[-]';
+    margin-right: 5px;
+    color: #6c757d;
+}
+.json-tree .collapsed::before {
+    content: '[+]';
+}
+.json-tree .collapsed + .json-children {
+    display: none;
+}
+</style>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rawMessage = {{ message.raw_message|safe|escapejs|default:'""' }};
+    const rawMessageContent = document.getElementById('rawMessageContent');
+
+    // Copy raw message
+    document.getElementById('copyRawMessage').addEventListener('click', function() {
+        navigator.clipboard.writeText(rawMessageContent.textContent).then(() => {
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="bi bi-check me-1"></i> Copied!';
+            setTimeout(() => {
+                this.innerHTML = originalText;
+            }, 2000);
+        });
+    });
+
+    // View mode switching
+    document.getElementById('viewRaw').addEventListener('click', function() {
+        document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        rawMessageContent.textContent = "{{ message.raw_message|escapejs }}";
+    });
+
+    document.getElementById('viewHex').addEventListener('click', function() {
+        document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const text = "{{ message.raw_message|escapejs }}";
+        let hex = '';
+        for (let i = 0; i < text.length; i++) {
+            hex += text.charCodeAt(i).toString(16).padStart(2, '0') + ' ';
+            if ((i + 1) % 16 === 0) hex += '\n';
+        }
+        rawMessageContent.textContent = hex;
+    });
+
+    document.getElementById('viewEscaped').addEventListener('click', function() {
+        document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const text = "{{ message.raw_message|escapejs }}";
+        const escaped = text
+            .replace(/\x02/g, '<STX>')
+            .replace(/\x03/g, '<ETX>')
+            .replace(/\x04/g, '< EOT>')
+            .replace(/\x05/g, '<ENQ>')
+            .replace(/\x06/g, '<ACK>')
+            .replace(/\x15/g, '<NAK>')
+            .replace(/\r/g, '<CR>')
+            .replace(/\n/g, '<LF>\n');
+        rawMessageContent.textContent = escaped;
+    });
+
+    // JSON Tree rendering
+    {% if message.parsed_data %}
+    function renderJsonTree(data, container, level = 0) {
+        const indent = '  '.repeat(level);
+
+        if (typeof data === 'object' && data !== null) {
+            const isArray = Array.isArray(data);
+            const entries = Object.entries(data);
+
+            entries.forEach(([key, value], index) => {
+                const item = document.createElement('div');
+                item.style.marginLeft = (level * 20) + 'px';
+
+                const keySpan = document.createElement('span');
+                keySpan.className = 'json-key';
+                keySpan.textContent = isArray ? `[${key}]` : `"${key}"`;
+
+                if (typeof value === 'object' && value !== null) {
+                    keySpan.className += ' collapsible';
+                    keySpan.addEventListener('click', function() {
+                        this.classList.toggle('collapsed');
+                    });
+                }
+
+                item.appendChild(keySpan);
+                item.appendChild(document.createTextNode(': '));
+
+                if (typeof value === 'object' && value !== null) {
+                    item.appendChild(document.createTextNode(Array.isArray(value) ? '[' : '{'));
+                    container.appendChild(item);
+
+                    const children = document.createElement('div');
+                    children.className = 'json-children';
+                    renderJsonTree(value, children, level + 1);
+                    container.appendChild(children);
+
+                    const closing = document.createElement('div');
+                    closing.style.marginLeft = (level * 20) + 'px';
+                    closing.textContent = Array.isArray(value) ? ']' : '}';
+                    if (index < entries.length - 1) closing.textContent += ',';
+                    container.appendChild(closing);
+                } else {
+                    const valueSpan = document.createElement('span');
+                    if (typeof value === 'string') {
+                        valueSpan.className = 'json-string';
+                        valueSpan.textContent = `"${value}"`;
+                    } else if (typeof value === 'number') {
+                        valueSpan.className = 'json-number';
+                        valueSpan.textContent = value;
+                    } else if (typeof value === 'boolean') {
+                        valueSpan.className = 'json-boolean';
+                        valueSpan.textContent = value;
+                    } else {
+                        valueSpan.className = 'json-null';
+                        valueSpan.textContent = 'null';
+                    }
+                    item.appendChild(valueSpan);
+                    if (index < entries.length - 1) item.appendChild(document.createTextNode(','));
+                    container.appendChild(item);
+                }
+            });
+        }
+    }
+
+    const jsonTree = document.getElementById('jsonTree');
+    if (jsonTree && typeof parsedData !== 'undefined') {
+        renderJsonTree(parsedData, jsonTree);
+    }
+
+    document.getElementById('expandAll').addEventListener('click', function() {
+        const collapsed = document.querySelectorAll('.collapsed');
+        if (collapsed.length > 0) {
+            collapsed.forEach(el => el.classList.remove('collapsed'));
+            this.innerHTML = '<i class="bi bi-arrows-collapse"></i> Collapse All';
+        } else {
+            document.querySelectorAll('.collapsible').forEach(el => el.classList.add('collapsed'));
+            this.innerHTML = '<i class="bi bi-arrows-expand"></i> Expand All';
+        }
+    });
+    {% endif %}
+});
+</script>
+{% endblock %}
+{% endblock %}

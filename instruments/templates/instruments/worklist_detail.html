@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Worklist #{{ worklist.pk }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'instruments:dashboard' %}">Instruments</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'instruments:worklist_list' %}">Worklists</a></li>
+            <li class="breadcrumb-item active">Worklist #{{ worklist.pk }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h1 class="h3 mb-1">
+                Worklist #{{ worklist.pk }}
+                {% if worklist.status == 'PENDING' %}
+                <span class="badge bg-warning text-dark">Pending</span>
+                {% elif worklist.status == 'SENT' %}
+                <span class="badge bg-info">Sent</span>
+                {% elif worklist.status == 'ACKNOWLEDGED' %}
+                <span class="badge bg-primary">Acknowledged</span>
+                {% elif worklist.status == 'PARTIAL' %}
+                <span class="badge bg-secondary">Partial</span>
+                {% elif worklist.status == 'COMPLETED' %}
+                <span class="badge bg-success">Completed</span>
+                {% elif worklist.status == 'ERROR' %}
+                <span class="badge bg-danger">Error</span>
+                {% endif %}
+            </h1>
+            <p class="text-muted mb-0">
+                {{ worklist.connection.instrument.name }} - {{ worklist.connection.name }}
+            </p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'instruments:worklist_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to List
+            </a>
+            {% if worklist.status == 'PENDING' %}
+            <button type="button" class="btn btn-success" id="btnSend">
+                <i class="bi bi-send me-1"></i> Send Now
+            </button>
+            <button type="button" class="btn btn-outline-danger" id="btnCancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </button>
+            {% elif worklist.status == 'ERROR' %}
+            <button type="button" class="btn btn-warning" id="btnRetry">
+                <i class="bi bi-arrow-repeat me-1"></i> Retry
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- Samples List -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-list me-2"></i> Samples in Worklist</span>
+                    <span class="badge bg-secondary">{{ worklist.samples|length }} sample{% if worklist.samples|length != 1 %}s{% endif %}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Sample ID</th>
+                                <th>Patient</th>
+                                <th>Tests</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sample in sample_details %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <a href="#" class="fw-medium">{{ sample.sample_id }}</a>
+                                </td>
+                                <td>
+                                    {% if sample.patient_name %}
+                                    {{ sample.patient_name }}
+                                    <br>
+                                    <small class="text-muted">{{ sample.patient_id }}</small>
+                                    {% else %}
+                                    <span class="text-muted">--</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% for test in sample.tests %}
+                                    <span class="badge bg-outline-secondary border">{{ test }}</span>
+                                    {% empty %}
+                                    <span class="text-muted">--</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% if sample.result_received %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>Result Received
+                                    </span>
+                                    {% elif sample.acknowledged %}
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-check me-1"></i>Acknowledged
+                                    </span>
+                                    {% elif sample.sent %}
+                                    <span class="badge bg-primary">
+                                        <i class="bi bi-send me-1"></i>Sent
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-hourglass me-1"></i>Pending
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    No sample details available
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Export Data Preview -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-code me-2"></i> Export Data</span>
+                    <button class="btn btn-sm btn-outline-secondary" id="copyExportData">
+                        <i class="bi bi-clipboard me-1"></i> Copy
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <pre class="mb-0 p-3 font-monospace bg-dark text-light small"
+                         style="max-height: 400px; overflow-y: auto;"
+                         id="exportDataContent">{{ worklist.export_data|pprint }}</pre>
+                </div>
+            </div>
+
+            <!-- Error Message (if any) -->
+            {% if worklist.error_message %}
+            <div class="card border-danger mb-4">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle me-2"></i> Error Message
+                </div>
+                <div class="card-body">
+                    <pre class="mb-0 text-danger font-monospace">{{ worklist.error_message }}</pre>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Related Messages -->
+            {% if related_messages %}
+            <div class="card">
+                <div class="card-header bg-light">
+                    <i class="bi bi-chat-text me-2"></i> Related Messages
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Direction</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for msg in related_messages %}
+                            <tr>
+                                <td>
+                                    {% if msg.direction == 'INBOUND' %}
+                                    <span class="badge bg-primary">IN</span>
+                                    {% else %}
+                                    <span class="badge bg-success">OUT</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ msg.get_message_type_display }}</td>
+                                <td>
+                                    <span class="badge bg-{% if msg.status == 'ERROR' %}danger{% elif msg.status == 'PROCESSED' %}success{% else %}secondary{% endif %}">
+                                        {{ msg.status }}
+                                    </span>
+                                </td>
+                                <td>{{ msg.timestamp|date:"H:i:s" }}</td>
+                                <td>
+                                    <a href="{% url 'instruments:message_log_detail' msg.pk %}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Status Timeline -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-clock-history me-2"></i> Status Timeline
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item {% if worklist.created_at %}text-success{% endif %}">
+                            <i class="bi bi-circle-fill"></i>
+                            <div>
+                                <strong>Created</strong>
+                                <br>
+                                <small class="text-muted">{{ worklist.created_at|date:"Y-m-d H:i:s" }}</small>
+                            </div>
+                        </div>
+                        <div class="timeline-item {% if worklist.sent_at %}text-success{% else %}text-muted{% endif %}">
+                            <i class="bi bi-{% if worklist.sent_at %}circle-fill{% else %}circle{% endif %}"></i>
+                            <div>
+                                <strong>Sent</strong>
+                                <br>
+                                {% if worklist.sent_at %}
+                                <small class="text-muted">{{ worklist.sent_at|date:"Y-m-d H:i:s" }}</small>
+                                {% else %}
+                                <small class="text-muted">Pending</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="timeline-item {% if worklist.acknowledged_at %}text-success{% else %}text-muted{% endif %}">
+                            <i class="bi bi-{% if worklist.acknowledged_at %}circle-fill{% else %}circle{% endif %}"></i>
+                            <div>
+                                <strong>Acknowledged</strong>
+                                <br>
+                                {% if worklist.acknowledged_at %}
+                                <small class="text-muted">{{ worklist.acknowledged_at|date:"Y-m-d H:i:s" }}</small>
+                                {% else %}
+                                <small class="text-muted">Waiting</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="timeline-item {% if worklist.completed_at %}text-success{% elif worklist.status == 'ERROR' %}text-danger{% else %}text-muted{% endif %}">
+                            {% if worklist.status == 'ERROR' %}
+                            <i class="bi bi-x-circle-fill"></i>
+                            <div>
+                                <strong>Error</strong>
+                            </div>
+                            {% else %}
+                            <i class="bi bi-{% if worklist.completed_at %}circle-fill{% else %}circle{% endif %}"></i>
+                            <div>
+                                <strong>Completed</strong>
+                                <br>
+                                {% if worklist.completed_at %}
+                                <small class="text-muted">{{ worklist.completed_at|date:"Y-m-d H:i:s" }}</small>
+                                {% else %}
+                                <small class="text-muted">Waiting</small>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection Details -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-plug me-2"></i> Connection
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Instrument</span>
+                        <a href="{% url 'instruments:connection_detail' worklist.connection.pk %}">
+                            {{ worklist.connection.instrument.name }}
+                        </a>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Connection</span>
+                        <span>{{ worklist.connection.name }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Protocol</span>
+                        <span class="badge bg-secondary">{{ worklist.connection.get_protocol_display }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Status</span>
+                        {% if worklist.connection.connection_status == 'CONNECTED' %}
+                        <span class="badge bg-success">Connected</span>
+                        {% else %}
+                        <span class="badge bg-danger">Disconnected</span>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Metadata -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <i class="bi bi-info-circle me-2"></i> Metadata
+                </div>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Created By</span>
+                        <span>{{ worklist.created_by|default:"--" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Sample Count</span>
+                        <span>{{ worklist.samples|length }}</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Notes -->
+            {% if worklist.notes %}
+            <div class="card">
+                <div class="card-header bg-light">
+                    <i class="bi bi-sticky me-2"></i> Notes
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ worklist.notes }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    background: #dee2e6;
+}
+.timeline-item {
+    position: relative;
+    padding: 12px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+.timeline-item i {
+    position: absolute;
+    left: -26px;
+    font-size: 12px;
+    margin-top: 3px;
+}
+</style>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const worklistId = {{ worklist.pk }};
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function makeRequest(action) {
+        fetch(`/instruments/api/worklists/${worklistId}/${action}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  location.reload();
+              } else {
+                  alert('Operation failed: ' + data.error);
+              }
+          });
+    }
+
+    // Send button
+    const btnSend = document.getElementById('btnSend');
+    if (btnSend) {
+        btnSend.addEventListener('click', function() {
+            if (confirm('Send this worklist now?')) {
+                makeRequest('send');
+            }
+        });
+    }
+
+    // Cancel button
+    const btnCancel = document.getElementById('btnCancel');
+    if (btnCancel) {
+        btnCancel.addEventListener('click', function() {
+            if (confirm('Cancel this worklist?')) {
+                makeRequest('cancel');
+            }
+        });
+    }
+
+    // Retry button
+    const btnRetry = document.getElementById('btnRetry');
+    if (btnRetry) {
+        btnRetry.addEventListener('click', function() {
+            if (confirm('Retry sending this worklist?')) {
+                makeRequest('retry');
+            }
+        });
+    }
+
+    // Copy export data
+    document.getElementById('copyExportData').addEventListener('click', function() {
+        const content = document.getElementById('exportDataContent').textContent;
+        navigator.clipboard.writeText(content).then(() => {
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="bi bi-check me-1"></i> Copied!';
+            setTimeout(() => {
+                this.innerHTML = originalText;
+            }, 2000);
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

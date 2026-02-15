@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dispatch Transfer {{ transfer.transfer_number }} - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'transfers:transfer_list' %}">Transfers</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'transfers:transfer_detail' transfer.pk %}">{{ transfer.transfer_number }}</a></li>
+                    <li class="breadcrumb-item active">Dispatch</li>
+                </ol>
+            </nav>
+
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-send"></i> Dispatch Transfer
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Transfer Summary -->
+                    <div class="alert alert-info">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <strong>Transfer #:</strong><br>
+                                {{ transfer.transfer_number }}
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Items:</strong><br>
+                                {{ transfer.items.count }} samples
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Route:</strong><br>
+                                {{ transfer.source_location.name }} <i class="bi bi-arrow-right"></i> {{ transfer.destination_location.name }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <!-- Shipping Details -->
+                        <h5 class="mb-3">Shipping Details</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.courier.id_for_label }}" class="form-label">
+                                    Courier / Carrier
+                                </label>
+                                <input type="text"
+                                       name="{{ form.courier.name }}"
+                                       id="{{ form.courier.id_for_label }}"
+                                       class="form-control {% if form.courier.errors %}is-invalid{% endif %}"
+                                       value="{{ form.courier.value|default:transfer.courier }}"
+                                       placeholder="e.g., FedEx, DHL, Internal Courier">
+                                {% if form.courier.errors %}
+                                <div class="invalid-feedback">{{ form.courier.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.tracking_number.id_for_label }}" class="form-label">
+                                    Tracking Number
+                                </label>
+                                <input type="text"
+                                       name="{{ form.tracking_number.name }}"
+                                       id="{{ form.tracking_number.id_for_label }}"
+                                       class="form-control {% if form.tracking_number.errors %}is-invalid{% endif %}"
+                                       value="{{ form.tracking_number.value|default:'' }}"
+                                       placeholder="Enter tracking number if available">
+                                {% if form.tracking_number.errors %}
+                                <div class="invalid-feedback">{{ form.tracking_number.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.expected_arrival_date.id_for_label }}" class="form-label">
+                                    Expected Arrival Date
+                                </label>
+                                <input type="date"
+                                       name="{{ form.expected_arrival_date.name }}"
+                                       id="{{ form.expected_arrival_date.id_for_label }}"
+                                       class="form-control {% if form.expected_arrival_date.errors %}is-invalid{% endif %}"
+                                       value="{{ form.expected_arrival_date.value|default:transfer.expected_arrival_date|date:'Y-m-d' }}">
+                                {% if form.expected_arrival_date.errors %}
+                                <div class="invalid-feedback">{{ form.expected_arrival_date.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.shipment_conditions.id_for_label }}" class="form-label">
+                                    Confirm Shipment Conditions
+                                </label>
+                                <select name="{{ form.shipment_conditions.name }}"
+                                        id="{{ form.shipment_conditions.id_for_label }}"
+                                        class="form-select">
+                                    <option value="AMBIENT" {% if transfer.shipment_conditions == 'AMBIENT' %}selected{% endif %}>
+                                        Ambient (Room Temperature)
+                                    </option>
+                                    <option value="REFRIGERATED" {% if transfer.shipment_conditions == 'REFRIGERATED' %}selected{% endif %}>
+                                        Refrigerated (2-8C)
+                                    </option>
+                                    <option value="FROZEN" {% if transfer.shipment_conditions == 'FROZEN' %}selected{% endif %}>
+                                        Frozen (-20C)
+                                    </option>
+                                    <option value="DEEP_FROZEN" {% if transfer.shipment_conditions == 'DEEP_FROZEN' %}selected{% endif %}>
+                                        Deep Frozen (-80C)
+                                    </option>
+                                    <option value="LIQUID_NITROGEN" {% if transfer.shipment_conditions == 'LIQUID_NITROGEN' %}selected{% endif %}>
+                                        Liquid Nitrogen (-196C)
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Items Verification -->
+                        <h5 class="mb-3">Items Verification</h5>
+                        <p class="text-muted mb-3">Please verify and confirm the condition of each sample before dispatch.</p>
+
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="select-all-items" checked>
+                                            </div>
+                                        </th>
+                                        <th>Sample ID</th>
+                                        <th>Sample Type</th>
+                                        <th>Quantity</th>
+                                        <th>Condition</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in transfer.items.all %}
+                                    <tr>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input item-checkbox" type="checkbox"
+                                                       name="items_verified" value="{{ item.pk }}" checked>
+                                            </div>
+                                        </td>
+                                        <td>{{ item.sample.sample_id }}</td>
+                                        <td>{{ item.sample.sample_type }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>
+                                            <select name="condition_{{ item.pk }}" class="form-select form-select-sm">
+                                                <option value="GOOD">Good</option>
+                                                <option value="COMPROMISED">Compromised</option>
+                                                <option value="DAMAGED">Damaged</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Dispatch Notes -->
+                        <div class="mb-4">
+                            <label for="{{ form.dispatch_notes.id_for_label }}" class="form-label">
+                                Dispatch Notes
+                            </label>
+                            <textarea name="{{ form.dispatch_notes.name }}"
+                                      id="{{ form.dispatch_notes.id_for_label }}"
+                                      class="form-control"
+                                      rows="3"
+                                      placeholder="Any notes about the dispatch...">{{ form.dispatch_notes.value|default:'' }}</textarea>
+                        </div>
+
+                        <!-- Confirmation Checkbox -->
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="confirm-dispatch" required>
+                            <label class="form-check-label" for="confirm-dispatch">
+                                I confirm that all samples have been properly packaged and are ready for dispatch
+                            </label>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-info btn-lg" id="dispatch-btn">
+                                <i class="bi bi-send"></i> Confirm Dispatch
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reminder Card -->
+            <div class="card mt-4 border-warning">
+                <div class="card-body">
+                    <h6 class="card-title text-warning">
+                        <i class="bi bi-exclamation-triangle"></i> Before Dispatching
+                    </h6>
+                    <ul class="mb-0 text-muted">
+                        <li>Ensure all samples are properly labeled</li>
+                        <li>Verify correct packaging for shipment conditions</li>
+                        <li>Include temperature monitors if required</li>
+                        <li>Confirm destination contact is notified</li>
+                        <li>Keep a copy of shipping documentation</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all checkbox functionality
+    const selectAll = document.getElementById('select-all-items');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+
+    selectAll.addEventListener('change', function() {
+        itemCheckboxes.forEach(cb => cb.checked = this.checked);
+    });
+
+    itemCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            selectAll.checked = Array.from(itemCheckboxes).every(c => c.checked);
+        });
+    });
+});
+</script>
+{% endblock %}

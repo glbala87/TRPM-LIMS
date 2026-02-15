@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Transfers - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h3 mb-0">Sample Transfers</h1>
+                <p class="text-muted mb-0">Manage sample transfers between locations</p>
+            </div>
+            <div>
+                <a href="{% url 'transfers:transfer_quick_create' %}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-lightning"></i> Quick Transfer
+                </a>
+                <a href="{% url 'transfers:transfer_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> New Transfer
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Search</label>
+                    <input type="text" class="form-control" id="search" name="q"
+                           value="{{ request.GET.q }}" placeholder="Transfer #, tracking...">
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Statuses</option>
+                        <option value="PENDING" {% if request.GET.status == 'PENDING' %}selected{% endif %}>Pending</option>
+                        <option value="IN_TRANSIT" {% if request.GET.status == 'IN_TRANSIT' %}selected{% endif %}>In Transit</option>
+                        <option value="RECEIVED" {% if request.GET.status == 'RECEIVED' %}selected{% endif %}>Received</option>
+                        <option value="CANCELLED" {% if request.GET.status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="source" class="form-label">Source Location</label>
+                    <select class="form-select" id="source" name="source">
+                        <option value="">All Sources</option>
+                        {% for location in locations %}
+                        <option value="{{ location.id }}" {% if request.GET.source == location.id|stringformat:"s" %}selected{% endif %}>
+                            {{ location.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="destination" class="form-label">Destination</label>
+                    <select class="form-select" id="destination" name="destination">
+                        <option value="">All Destinations</option>
+                        {% for location in locations %}
+                        <option value="{{ location.id }}" {% if request.GET.destination == location.id|stringformat:"s" %}selected{% endif %}>
+                            {{ location.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="date_from" class="form-label">Date From</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from"
+                           value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transfer Stats Summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-warning bg-opacity-10 border-warning">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">{{ stats.pending|default:0 }}</h4>
+                    <small class="text-muted">Pending</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info bg-opacity-10 border-info">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">{{ stats.in_transit|default:0 }}</h4>
+                    <small class="text-muted">In Transit</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success bg-opacity-10 border-success">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">{{ stats.received_today|default:0 }}</h4>
+                    <small class="text-muted">Received Today</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger bg-opacity-10 border-danger">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">{{ stats.overdue|default:0 }}</h4>
+                    <small class="text-muted">Overdue</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfers Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Transfer #</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                            <th>Destination</th>
+                            <th>Items</th>
+                            <th>Created</th>
+                            <th>Expected Arrival</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transfer in transfers %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'transfers:transfer_detail' transfer.pk %}" class="fw-semibold text-decoration-none">
+                                    {{ transfer.transfer_number }}
+                                </a>
+                                {% if transfer.tracking_number %}
+                                <br><small class="text-muted">{{ transfer.tracking_number }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if transfer.status == 'PENDING' %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-hourglass-split"></i> Pending
+                                </span>
+                                {% elif transfer.status == 'IN_TRANSIT' %}
+                                <span class="badge bg-info">
+                                    <i class="bi bi-truck"></i> In Transit
+                                </span>
+                                {% elif transfer.status == 'RECEIVED' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Received
+                                </span>
+                                {% elif transfer.status == 'CANCELLED' %}
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-x-circle"></i> Cancelled
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <i class="bi bi-geo-alt text-muted"></i>
+                                {{ transfer.source_location.name }}
+                            </td>
+                            <td>
+                                <i class="bi bi-geo-alt-fill text-primary"></i>
+                                {{ transfer.destination_location.name }}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ transfer.item_count }} items</span>
+                            </td>
+                            <td>{{ transfer.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                {% if transfer.expected_arrival_date %}
+                                    {{ transfer.expected_arrival_date|date:"M d, Y" }}
+                                    {% if transfer.is_overdue %}
+                                    <span class="badge bg-danger ms-1">Overdue</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'transfers:transfer_detail' transfer.pk %}"
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if transfer.status == 'PENDING' %}
+                                    <a href="{% url 'transfers:transfer_dispatch' transfer.pk %}"
+                                       class="btn btn-outline-info" title="Dispatch">
+                                        <i class="bi bi-send"></i>
+                                    </a>
+                                    <a href="{% url 'transfers:transfer_edit' transfer.pk %}"
+                                       class="btn btn-outline-secondary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% elif transfer.status == 'IN_TRANSIT' %}
+                                    <a href="{% url 'transfers:transfer_receive' transfer.pk %}"
+                                       class="btn btn-outline-success" title="Receive">
+                                        <i class="bi bi-box-arrow-in-down"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="bi bi-inbox display-4"></i>
+                                    <p class="mt-2 mb-0">No transfers found</p>
+                                    <a href="{% url 'transfers:transfer_create' %}" class="btn btn-primary mt-3">
+                                        Create First Transfer
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if transfers.has_other_pages %}
+        <div class="card-footer">
+            <nav aria-label="Transfer pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if transfers.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ transfers.previous_page_number }}&{{ request.GET.urlencode }}">
+                            Previous
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% for num in transfers.paginator.page_range %}
+                        {% if transfers.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > transfers.number|add:'-3' and num < transfers.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}&{{ request.GET.urlencode }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if transfers.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ transfers.next_page_number }}&{{ request.GET.urlencode }}">
+                            Next
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Track Transfer {{ transfer.transfer_number }} - TRPM LIMS{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="display-6 mb-2">
+                    <i class="bi bi-truck"></i> Transfer Tracking
+                </h1>
+                <p class="text-muted">
+                    Track the status of your sample transfer in real-time
+                </p>
+            </div>
+
+            <!-- Main Tracking Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <!-- Transfer Info Header -->
+                    <div class="row align-items-center mb-4">
+                        <div class="col-md-6">
+                            <h4 class="mb-1">{{ transfer.transfer_number }}</h4>
+                            <p class="text-muted mb-0">
+                                {% if transfer.tracking_number %}
+                                Tracking: {{ transfer.tracking_number }}
+                                {% else %}
+                                Internal Transfer
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            {% if transfer.status == 'PENDING' %}
+                            <span class="badge bg-warning text-dark fs-5 px-3 py-2">
+                                <i class="bi bi-hourglass-split"></i> Pending Dispatch
+                            </span>
+                            {% elif transfer.status == 'IN_TRANSIT' %}
+                            <span class="badge bg-info fs-5 px-3 py-2">
+                                <i class="bi bi-truck"></i> In Transit
+                            </span>
+                            {% elif transfer.status == 'RECEIVED' %}
+                            <span class="badge bg-success fs-5 px-3 py-2">
+                                <i class="bi bi-check-circle"></i> Delivered
+                            </span>
+                            {% elif transfer.status == 'CANCELLED' %}
+                            <span class="badge bg-danger fs-5 px-3 py-2">
+                                <i class="bi bi-x-circle"></i> Cancelled
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Route Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-5">
+                            <div class="d-flex align-items-start">
+                                <div class="me-3">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 p-3">
+                                        <i class="bi bi-geo-alt text-primary fs-4"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h6 class="text-muted mb-1">Origin</h6>
+                                    <h5 class="mb-0">{{ transfer.source_location.name }}</h5>
+                                    {% if transfer.source_location.city %}
+                                    <small class="text-muted">{{ transfer.source_location.city }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 text-center d-flex align-items-center justify-content-center">
+                            <div class="border-top border-2 w-100 position-relative" style="top: 10px;">
+                                <i class="bi bi-arrow-right position-absolute bg-white px-2" style="top: -12px; left: 50%; transform: translateX(-50%);"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="d-flex align-items-start">
+                                <div class="me-3">
+                                    <div class="rounded-circle bg-success bg-opacity-10 p-3">
+                                        <i class="bi bi-geo-alt-fill text-success fs-4"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h6 class="text-muted mb-1">Destination</h6>
+                                    <h5 class="mb-0">{{ transfer.destination_location.name }}</h5>
+                                    {% if transfer.destination_location.city %}
+                                    <small class="text-muted">{{ transfer.destination_location.city }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Timeline -->
+                    <h5 class="mb-4"><i class="bi bi-clock-history"></i> Tracking Timeline</h5>
+
+                    <div class="timeline-tracking">
+                        <!-- Created -->
+                        <div class="timeline-step completed">
+                            <div class="timeline-marker">
+                                <div class="marker-inner bg-success">
+                                    <i class="bi bi-check text-white"></i>
+                                </div>
+                            </div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Transfer Created</h6>
+                                <p class="text-muted mb-0">
+                                    {{ transfer.created_at|date:"F d, Y" }} at {{ transfer.created_at|time:"H:i" }}
+                                </p>
+                                <small class="text-muted">
+                                    {{ transfer.items.count }} sample(s) prepared for transfer
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Dispatched -->
+                        <div class="timeline-step {% if transfer.dispatched_at %}completed{% elif transfer.status == 'CANCELLED' %}cancelled{% else %}pending{% endif %}">
+                            <div class="timeline-marker">
+                                <div class="marker-inner {% if transfer.dispatched_at %}bg-success{% elif transfer.status == 'CANCELLED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {% if transfer.dispatched_at %}
+                                    <i class="bi bi-check text-white"></i>
+                                    {% elif transfer.status == 'CANCELLED' %}
+                                    <i class="bi bi-x text-white"></i>
+                                    {% else %}
+                                    <i class="bi bi-hourglass text-white"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Dispatched</h6>
+                                {% if transfer.dispatched_at %}
+                                <p class="text-muted mb-0">
+                                    {{ transfer.dispatched_at|date:"F d, Y" }} at {{ transfer.dispatched_at|time:"H:i" }}
+                                </p>
+                                {% if transfer.courier %}
+                                <small class="text-muted">via {{ transfer.courier }}</small>
+                                {% endif %}
+                                {% elif transfer.status == 'CANCELLED' %}
+                                <p class="text-danger mb-0">Cancelled</p>
+                                {% else %}
+                                <p class="text-muted mb-0">Awaiting dispatch</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- In Transit -->
+                        <div class="timeline-step {% if transfer.status == 'IN_TRANSIT' %}active{% elif transfer.received_at %}completed{% elif transfer.status == 'CANCELLED' %}cancelled{% else %}pending{% endif %}">
+                            <div class="timeline-marker">
+                                <div class="marker-inner {% if transfer.status == 'IN_TRANSIT' %}bg-info{% elif transfer.received_at %}bg-success{% elif transfer.status == 'CANCELLED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {% if transfer.status == 'IN_TRANSIT' %}
+                                    <i class="bi bi-truck text-white"></i>
+                                    {% elif transfer.received_at %}
+                                    <i class="bi bi-check text-white"></i>
+                                    {% elif transfer.status == 'CANCELLED' %}
+                                    <i class="bi bi-x text-white"></i>
+                                    {% else %}
+                                    <i class="bi bi-three-dots text-white"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">In Transit</h6>
+                                {% if transfer.status == 'IN_TRANSIT' %}
+                                <p class="text-info mb-0">Currently in transit</p>
+                                {% if transfer.expected_arrival_date %}
+                                <small class="text-muted">
+                                    Expected arrival: {{ transfer.expected_arrival_date|date:"F d, Y" }}
+                                </small>
+                                {% endif %}
+                                {% elif transfer.received_at %}
+                                <p class="text-muted mb-0">Completed</p>
+                                {% elif transfer.status == 'CANCELLED' %}
+                                <p class="text-danger mb-0">Cancelled</p>
+                                {% else %}
+                                <p class="text-muted mb-0">Pending</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Received -->
+                        <div class="timeline-step {% if transfer.received_at %}completed{% elif transfer.status == 'CANCELLED' %}cancelled{% else %}pending{% endif %}">
+                            <div class="timeline-marker">
+                                <div class="marker-inner {% if transfer.received_at %}bg-success{% elif transfer.status == 'CANCELLED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {% if transfer.received_at %}
+                                    <i class="bi bi-check text-white"></i>
+                                    {% elif transfer.status == 'CANCELLED' %}
+                                    <i class="bi bi-x text-white"></i>
+                                    {% else %}
+                                    <i class="bi bi-box text-white"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">Delivered</h6>
+                                {% if transfer.received_at %}
+                                <p class="text-success mb-0">
+                                    {{ transfer.received_at|date:"F d, Y" }} at {{ transfer.received_at|time:"H:i" }}
+                                </p>
+                                <small class="text-muted">
+                                    All items received at {{ transfer.destination_location.name }}
+                                </small>
+                                {% elif transfer.status == 'CANCELLED' %}
+                                <p class="text-danger mb-0">Cancelled</p>
+                                {% if transfer.cancellation_reason %}
+                                <small class="text-muted">Reason: {{ transfer.cancellation_reason }}</small>
+                                {% endif %}
+                                {% else %}
+                                <p class="text-muted mb-0">Pending</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transfer Details -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Transfer Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="text-muted">Number of Items:</td>
+                                    <td><strong>{{ transfer.items.count }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">Shipment Conditions:</td>
+                                    <td>
+                                        {% if transfer.shipment_conditions == 'AMBIENT' %}
+                                        <span class="badge bg-secondary">Ambient</span>
+                                        {% elif transfer.shipment_conditions == 'REFRIGERATED' %}
+                                        <span class="badge bg-info">Refrigerated</span>
+                                        {% elif transfer.shipment_conditions == 'FROZEN' %}
+                                        <span class="badge bg-primary">Frozen</span>
+                                        {% elif transfer.shipment_conditions == 'DEEP_FROZEN' %}
+                                        <span class="badge bg-dark">Deep Frozen</span>
+                                        {% elif transfer.shipment_conditions == 'LIQUID_NITROGEN' %}
+                                        <span class="badge bg-danger">Liquid Nitrogen</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="text-muted">Courier:</td>
+                                    <td><strong>{{ transfer.courier|default:"-" }}</strong></td>
+                                </tr>
+                                {% if transfer.tracking_number %}
+                                <tr>
+                                    <td class="text-muted">Tracking #:</td>
+                                    <td>
+                                        <a href="{{ transfer.tracking_url }}" target="_blank" class="text-decoration-none">
+                                            {{ transfer.tracking_number }}
+                                            <i class="bi bi-box-arrow-up-right"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-question-circle"></i>
+                        Questions about this transfer? Contact us at
+                        <a href="mailto:lab@trpm.edu">lab@trpm.edu</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline-tracking {
+    position: relative;
+    padding-left: 40px;
+}
+
+.timeline-step {
+    position: relative;
+    padding-bottom: 30px;
+    padding-left: 30px;
+}
+
+.timeline-step:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-step::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 30px;
+    bottom: 0;
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.timeline-step:last-child::before {
+    display: none;
+}
+
+.timeline-step.completed::before {
+    background-color: #198754;
+}
+
+.timeline-step.active::before {
+    background: linear-gradient(to bottom, #0dcaf0 50%, #dee2e6 50%);
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 32px;
+    height: 32px;
+}
+
+.marker-inner {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline-step.active .marker-inner {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(13, 202, 240, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 202, 240, 0);
+    }
+}
+
+.timeline-content {
+    padding-top: 3px;
+}
+</style>
+{% endblock %}
