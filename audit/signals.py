@@ -1,6 +1,7 @@
 """
 Signal handlers for automatic audit logging.
 """
+from decimal import Decimal
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
@@ -8,6 +9,19 @@ from django.contrib.contenttypes.models import ContentType
 
 from .models import AuditLog, AuditTrail
 from .middleware import get_current_request, get_current_user
+
+
+def serialize_value(value):
+    """Convert a value to a JSON-serializable format."""
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return float(value)
+    if hasattr(value, 'pk'):
+        return str(value)
+    if hasattr(value, 'isoformat'):
+        return value.isoformat()
+    return value
 
 # Models to exclude from automatic audit logging
 EXCLUDED_MODELS = [
@@ -56,11 +70,7 @@ def get_changed_fields(instance, created=False):
             if field.name in ['id', 'created_at', 'updated_at']:
                 continue
             value = getattr(instance, field.name)
-            if hasattr(value, 'pk'):
-                value = str(value)
-            elif hasattr(value, 'isoformat'):
-                value = value.isoformat()
-            changed[field.name] = {'old': None, 'new': value}
+            changed[field.name] = {'old': None, 'new': serialize_value(value)}
         return changed
 
     # For updates, compare with stored original values
@@ -71,33 +81,31 @@ def get_changed_fields(instance, created=False):
     for field_name, old_value in instance._original_values.items():
         new_value = getattr(instance, field_name, None)
 
-        # Handle foreign keys
+        # Get comparison values (use pk for related objects)
         if hasattr(new_value, 'pk'):
             new_value_compare = new_value.pk
-            new_value_display = str(new_value)
         else:
             new_value_compare = new_value
-            new_value_display = new_value
 
         if hasattr(old_value, 'pk'):
             old_value_compare = old_value.pk
-            old_value_display = str(old_value)
         else:
             old_value_compare = old_value
-            old_value_display = old_value
 
-        # Convert datetime to string for comparison
+        # Convert datetime/decimal for comparison
         if hasattr(new_value_compare, 'isoformat'):
             new_value_compare = new_value_compare.isoformat()
-            new_value_display = new_value_compare
         if hasattr(old_value_compare, 'isoformat'):
             old_value_compare = old_value_compare.isoformat()
-            old_value_display = old_value_compare
+        if isinstance(new_value_compare, Decimal):
+            new_value_compare = float(new_value_compare)
+        if isinstance(old_value_compare, Decimal):
+            old_value_compare = float(old_value_compare)
 
         if old_value_compare != new_value_compare:
             changed[field_name] = {
-                'old': old_value_display,
-                'new': new_value_display
+                'old': serialize_value(old_value),
+                'new': serialize_value(new_value)
             }
 
     return changed

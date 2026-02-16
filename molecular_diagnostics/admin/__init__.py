@@ -6,3 +6,4 @@ from .workflows import WorkflowDefinitionAdmin, WorkflowStepAdmin, SampleHistory
 from .batches import InstrumentRunAdmin, PCRPlateAdmin, NGSLibraryAdmin, NGSPoolAdmin
 from .qc import QCMetricDefinitionAdmin, ControlSampleAdmin, QCRecordAdmin
 from .results import MolecularResultAdmin, PCRResultAdmin, SequencingResultAdmin, VariantCallAdmin
+from .annotations import VariantAnnotationAdmin, AnnotationCacheAdmin

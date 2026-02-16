@@ -1,0 +1,161 @@
+{% comment %}
+ClinVar annotation summary component.
+Context variables:
+  - annotation: VariantAnnotation object
+{% endcomment %}
+
+{% if annotation and annotation.clinvar_fetched_at %}
+<div class="clinvar-summary">
+    <h4>ClinVar Annotation</h4>
+
+    <div class="clinvar-significance">
+        <span class="label">Clinical Significance:</span>
+        <span class="value significance-{{ annotation.clinical_significance|lower }}">
+            {{ annotation.get_clinical_significance_display|default:"Not Available" }}
+        </span>
+        {% if annotation.clinical_significance_raw and annotation.clinical_significance_raw != annotation.get_clinical_significance_display %}
+        <span class="raw-significance">({{ annotation.clinical_significance_raw }})</span>
+        {% endif %}
+    </div>
+
+    <div class="review-status">
+        <span class="label">Review Status:</span>
+        <span class="value">
+            <span class="review-stars">
+                {% for i in "1234"|make_list %}
+                    {% if forloop.counter <= annotation.review_status_stars %}★{% else %}☆{% endif %}
+                {% endfor %}
+            </span>
+            {{ annotation.get_review_status_display|default:"-" }}
+        </span>
+    </div>
+
+    {% if annotation.clinvar_variation_id %}
+    <div class="variation-id">
+        <span class="label">ClinVar ID:</span>
+        <span class="value">{{ annotation.clinvar_variation_id }}</span>
+    </div>
+    {% endif %}
+
+    {% if annotation.conditions %}
+    <div class="conditions">
+        <span class="label">Associated Conditions:</span>
+        <ul class="condition-list">
+            {% for condition in annotation.conditions %}
+            <li>
+                {{ condition.name }}
+                {% if condition.medgen_id %}
+                <span class="medgen-id">(MedGen: {{ condition.medgen_id }})</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if annotation.submitters %}
+    <div class="submitters">
+        <span class="label">Submitters ({{ annotation.submission_count }}):</span>
+        <ul class="submitter-list">
+            {% for submitter in annotation.submitters|slice:":5" %}
+            <li>
+                {{ submitter.name }}:
+                <span class="submitter-significance">{{ submitter.significance }}</span>
+                {% if submitter.date %}
+                <span class="submitter-date">({{ submitter.date }})</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            {% if annotation.submitters|length > 5 %}
+            <li class="more-submitters">+{{ annotation.submitters|length|add:"-5" }} more submitters</li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if annotation.last_evaluated %}
+    <div class="last-evaluated">
+        <span class="label">Last Evaluated:</span>
+        <span class="value">{{ annotation.last_evaluated|date:"M d, Y" }}</span>
+    </div>
+    {% endif %}
+
+    {% if annotation.pubmed_ids %}
+    <div class="pubmed-refs">
+        <span class="label">PubMed References:</span>
+        <span class="value">
+            {% for pmid in annotation.pubmed_ids|slice:":5" %}
+            PMID:{{ pmid }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+            {% if annotation.pubmed_ids|length > 5 %}
+            (+{{ annotation.pubmed_ids|length|add:"-5" }} more)
+            {% endif %}
+        </span>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.clinvar-summary {
+    border: 1px solid #e2e8f0;
+    padding: 12px;
+    margin: 10px 0;
+    background-color: #f7fafc;
+    border-radius: 4px;
+}
+.clinvar-summary h4 {
+    color: #2c5282;
+    margin: 0 0 10px 0;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 5px;
+}
+.clinvar-summary > div {
+    margin: 8px 0;
+}
+.clinvar-summary .label {
+    font-weight: bold;
+    color: #4a5568;
+    display: inline-block;
+    min-width: 150px;
+}
+.clinvar-summary .value {
+    color: #1a202c;
+}
+.clinvar-summary .review-stars {
+    color: #d69e2e;
+    margin-right: 5px;
+}
+.clinvar-summary .raw-significance {
+    font-size: 0.85em;
+    color: #718096;
+}
+.clinvar-summary .condition-list,
+.clinvar-summary .submitter-list {
+    margin: 5px 0 5px 20px;
+    padding: 0;
+}
+.clinvar-summary .condition-list li,
+.clinvar-summary .submitter-list li {
+    margin: 3px 0;
+}
+.clinvar-summary .medgen-id,
+.clinvar-summary .submitter-date {
+    font-size: 0.85em;
+    color: #718096;
+}
+.clinvar-summary .more-submitters {
+    font-style: italic;
+    color: #718096;
+}
+.significance-pathogenic { color: #c53030; font-weight: bold; }
+.significance-likely_pathogenic { color: #dd6b20; font-weight: bold; }
+.significance-uncertain_significance { color: #d69e2e; }
+.significance-likely_benign { color: #38a169; }
+.significance-benign { color: #38a169; }
+.significance-conflicting { color: #805ad5; }
+</style>
+{% else %}
+<div class="clinvar-summary no-data">
+    <p>ClinVar annotation not available for this variant.</p>
+</div>
+{% endif %}

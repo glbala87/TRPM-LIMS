@@ -1,0 +1,455 @@
+[
+  {
+    "model": "pharmacogenomics.pgxgene",
+    "pk": 1,
+    "fields": {
+      "symbol": "CYP2D6",
+      "name": "Cytochrome P450 2D6",
+      "category": "CYP",
+      "ensembl_id": "ENSG00000100197",
+      "ncbi_gene_id": "1565",
+      "chromosome": "22",
+      "description": "CYP2D6 is responsible for the metabolism of approximately 25% of clinically used drugs, including many antidepressants, antipsychotics, opioids, and cardiovascular drugs.",
+      "clinical_importance": "Highly polymorphic gene with significant impact on drug metabolism. Copy number variations are common.",
+      "uses_activity_score": true,
+      "copy_number_relevant": true,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.pgxgene",
+    "pk": 2,
+    "fields": {
+      "symbol": "CYP2C19",
+      "name": "Cytochrome P450 2C19",
+      "category": "CYP",
+      "ensembl_id": "ENSG00000165841",
+      "ncbi_gene_id": "1557",
+      "chromosome": "10",
+      "description": "CYP2C19 metabolizes proton pump inhibitors, antiplatelet agents (clopidogrel), antidepressants, and antiepileptic drugs.",
+      "clinical_importance": "Important for clopidogrel activation. Poor metabolizers have reduced drug efficacy.",
+      "uses_activity_score": true,
+      "copy_number_relevant": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.pgxgene",
+    "pk": 3,
+    "fields": {
+      "symbol": "CYP2C9",
+      "name": "Cytochrome P450 2C9",
+      "category": "CYP",
+      "ensembl_id": "ENSG00000138109",
+      "ncbi_gene_id": "1559",
+      "chromosome": "10",
+      "description": "CYP2C9 metabolizes warfarin, NSAIDs, sulfonylureas, and other drugs.",
+      "clinical_importance": "Critical for warfarin dosing. Reduced function increases bleeding risk.",
+      "uses_activity_score": true,
+      "copy_number_relevant": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.pgxgene",
+    "pk": 4,
+    "fields": {
+      "symbol": "DPYD",
+      "name": "Dihydropyrimidine Dehydrogenase",
+      "category": "PHASE2",
+      "ensembl_id": "ENSG00000188641",
+      "ncbi_gene_id": "1806",
+      "chromosome": "1",
+      "description": "DPYD encodes the rate-limiting enzyme in the catabolism of fluoropyrimidines (5-FU, capecitabine).",
+      "clinical_importance": "DPYD deficiency leads to severe, life-threatening toxicity with fluoropyrimidines.",
+      "uses_activity_score": true,
+      "copy_number_relevant": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.pgxgene",
+    "pk": 5,
+    "fields": {
+      "symbol": "TPMT",
+      "name": "Thiopurine S-Methyltransferase",
+      "category": "PHASE2",
+      "ensembl_id": "ENSG00000137364",
+      "ncbi_gene_id": "7172",
+      "chromosome": "6",
+      "description": "TPMT metabolizes thiopurine drugs (azathioprine, mercaptopurine, thioguanine).",
+      "clinical_importance": "TPMT deficiency leads to severe myelosuppression with standard thiopurine doses.",
+      "uses_activity_score": true,
+      "copy_number_relevant": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.pgxgene",
+    "pk": 6,
+    "fields": {
+      "symbol": "SLCO1B1",
+      "name": "Solute Carrier Organic Anion Transporter 1B1",
+      "category": "TRANSPORTER",
+      "ensembl_id": "ENSG00000134538",
+      "ncbi_gene_id": "10599",
+      "chromosome": "12",
+      "description": "SLCO1B1 transports statins and other drugs into hepatocytes.",
+      "clinical_importance": "Reduced function increases statin plasma levels and myopathy risk.",
+      "uses_activity_score": false,
+      "copy_number_relevant": false,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 1,
+    "fields": {
+      "gene": 1,
+      "name": "*1",
+      "function": "NORMAL",
+      "activity_score": "1.00",
+      "is_reference": true,
+      "defining_variants": [],
+      "description": "Reference allele with normal function",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 2,
+    "fields": {
+      "gene": 1,
+      "name": "*2",
+      "function": "NORMAL",
+      "activity_score": "1.00",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs16947", "hgvs": "c.2850C>T", "effect": "synonymous"},
+        {"rsid": "rs1135840", "hgvs": "c.4180G>C", "effect": "missense"}
+      ],
+      "description": "Normal function allele",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 3,
+    "fields": {
+      "gene": 1,
+      "name": "*3",
+      "function": "NO_FUNCTION",
+      "activity_score": "0.00",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs35742686", "hgvs": "c.2549delA", "effect": "frameshift"}
+      ],
+      "description": "Non-functional allele, frameshift mutation",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 4,
+    "fields": {
+      "gene": 1,
+      "name": "*4",
+      "function": "NO_FUNCTION",
+      "activity_score": "0.00",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs3892097", "hgvs": "c.506-1G>A", "effect": "splice"}
+      ],
+      "description": "Non-functional allele, splice site mutation",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 5,
+    "fields": {
+      "gene": 1,
+      "name": "*5",
+      "function": "NO_FUNCTION",
+      "activity_score": "0.00",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs5030655", "effect": "gene_deletion"}
+      ],
+      "description": "Gene deletion",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 6,
+    "fields": {
+      "gene": 1,
+      "name": "*10",
+      "function": "DECREASED",
+      "activity_score": "0.25",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs1065852", "hgvs": "c.100C>T", "effect": "missense"}
+      ],
+      "description": "Decreased function allele",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 7,
+    "fields": {
+      "gene": 1,
+      "name": "*17",
+      "function": "INCREASED",
+      "activity_score": "2.00",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs28371706", "hgvs": "c.1023C>T", "effect": "promoter"}
+      ],
+      "description": "Increased function allele with gene duplication",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 8,
+    "fields": {
+      "gene": 2,
+      "name": "*1",
+      "function": "NORMAL",
+      "activity_score": "1.00",
+      "is_reference": true,
+      "defining_variants": [],
+      "description": "Reference allele with normal function",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 9,
+    "fields": {
+      "gene": 2,
+      "name": "*2",
+      "function": "NO_FUNCTION",
+      "activity_score": "0.00",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs4244285", "hgvs": "c.681G>A", "effect": "splice"}
+      ],
+      "description": "Non-functional allele",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 10,
+    "fields": {
+      "gene": 2,
+      "name": "*3",
+      "function": "NO_FUNCTION",
+      "activity_score": "0.00",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs4986893", "hgvs": "c.636G>A", "effect": "stop"}
+      ],
+      "description": "Non-functional allele, premature stop codon",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.starallele",
+    "pk": 11,
+    "fields": {
+      "gene": 2,
+      "name": "*17",
+      "function": "INCREASED",
+      "activity_score": "1.50",
+      "is_reference": false,
+      "defining_variants": [
+        {"rsid": "rs12248560", "hgvs": "c.-806C>T", "effect": "promoter"}
+      ],
+      "description": "Increased function allele",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 1,
+    "fields": {
+      "gene": 1,
+      "code": "PM",
+      "name": "Poor Metabolizer",
+      "activity_score_min": "0.00",
+      "activity_score_max": "0.00",
+      "example_diplotypes": ["*3/*4", "*4/*4", "*5/*5"],
+      "clinical_implications": "Greatly reduced or absent enzyme activity. May require alternative drug or significantly reduced dose.",
+      "sort_order": 1,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 2,
+    "fields": {
+      "gene": 1,
+      "code": "IM",
+      "name": "Intermediate Metabolizer",
+      "activity_score_min": "0.25",
+      "activity_score_max": "1.00",
+      "example_diplotypes": ["*1/*4", "*2/*4", "*10/*10"],
+      "clinical_implications": "Reduced enzyme activity. May require dose adjustment.",
+      "sort_order": 2,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 3,
+    "fields": {
+      "gene": 1,
+      "code": "NM",
+      "name": "Normal Metabolizer",
+      "activity_score_min": "1.25",
+      "activity_score_max": "2.25",
+      "example_diplotypes": ["*1/*1", "*1/*2", "*2/*2"],
+      "clinical_implications": "Normal enzyme activity. Standard dosing applies.",
+      "sort_order": 3,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 4,
+    "fields": {
+      "gene": 1,
+      "code": "UM",
+      "name": "Ultrarapid Metabolizer",
+      "activity_score_min": "2.50",
+      "activity_score_max": "10.00",
+      "example_diplotypes": ["*1/*17", "*17/*17", "*1/*1xN"],
+      "clinical_implications": "Greatly increased enzyme activity. May require higher dose or alternative drug for prodrugs.",
+      "sort_order": 5,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 5,
+    "fields": {
+      "gene": 2,
+      "code": "PM",
+      "name": "Poor Metabolizer",
+      "activity_score_min": "0.00",
+      "activity_score_max": "0.00",
+      "example_diplotypes": ["*2/*2", "*2/*3", "*3/*3"],
+      "clinical_implications": "Greatly reduced or absent enzyme activity. Clopidogrel may be ineffective.",
+      "sort_order": 1,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 6,
+    "fields": {
+      "gene": 2,
+      "code": "IM",
+      "name": "Intermediate Metabolizer",
+      "activity_score_min": "0.50",
+      "activity_score_max": "1.00",
+      "example_diplotypes": ["*1/*2", "*1/*3"],
+      "clinical_implications": "Reduced enzyme activity. Consider alternative antiplatelet therapy.",
+      "sort_order": 2,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 7,
+    "fields": {
+      "gene": 2,
+      "code": "NM",
+      "name": "Normal Metabolizer",
+      "activity_score_min": "1.25",
+      "activity_score_max": "2.00",
+      "example_diplotypes": ["*1/*1"],
+      "clinical_implications": "Normal enzyme activity. Standard dosing applies.",
+      "sort_order": 3,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 8,
+    "fields": {
+      "gene": 2,
+      "code": "RM",
+      "name": "Rapid Metabolizer",
+      "activity_score_min": "1.50",
+      "activity_score_max": "2.00",
+      "example_diplotypes": ["*1/*17"],
+      "clinical_implications": "Increased enzyme activity. Standard or increased dosing may be appropriate.",
+      "sort_order": 4,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.phenotype",
+    "pk": 9,
+    "fields": {
+      "gene": 2,
+      "code": "UM",
+      "name": "Ultrarapid Metabolizer",
+      "activity_score_min": "2.25",
+      "activity_score_max": "3.00",
+      "example_diplotypes": ["*17/*17"],
+      "clinical_implications": "Greatly increased enzyme activity.",
+      "sort_order": 5,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  }
+]

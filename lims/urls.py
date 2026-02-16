@@ -44,6 +44,9 @@ urlpatterns = [
     path('qms/', include('qms.urls')),
     path('messaging/', include('messaging.urls')),
     path('pathology/', include('pathology.urls')),
+
+    # Phase 6 apps - Molecular/Genomics Enhancements
+    path('pgx/', include('pharmacogenomics.urls')),
 ]
 
 # Serve media files in development (only when DEBUG=True)

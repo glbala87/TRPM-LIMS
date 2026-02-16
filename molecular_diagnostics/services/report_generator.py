@@ -27,7 +27,9 @@ class ReportGenerator:
         'PCR': 'molecular_diagnostics/reports/pcr_report.html',
         'RT_PCR': 'molecular_diagnostics/reports/pcr_report.html',
         'NGS': 'molecular_diagnostics/reports/ngs_report.html',
+        'NGS_ENHANCED': 'molecular_diagnostics/reports/ngs_report_enhanced.html',
         'SANGER': 'molecular_diagnostics/reports/sanger_report.html',
+        'PGX': 'pharmacogenomics/reports/pgx_report.html',
         'DEFAULT': 'molecular_diagnostics/reports/base_report.html',
     }
 
@@ -137,6 +139,11 @@ class ReportGenerator:
         elif test_panel.test_type == 'NGS':
             context.update(self._get_ngs_context(result))
 
+        # Add PGx context if available
+        pgx_context = self._get_pgx_context(result)
+        if pgx_context:
+            context.update(pgx_context)
+
         return context
 
     def _get_pcr_context(self, result):
@@ -186,9 +193,142 @@ class ReportGenerator:
             'pathogenic_variants': pathogenic,
             'vus_variants': vus,
             'benign_variants': benign,
+            'show_annotations': True,
+            'show_details': True,
         })
 
+        # Check QC pass/fail
+        if context.get('sequencing_metrics'):
+            metrics = context['sequencing_metrics']
+            qc_passed = True
+            if metrics.get('mean_coverage') and metrics['mean_coverage'] < 100:
+                qc_passed = False
+            if metrics.get('q30_percentage') and metrics['q30_percentage'] < 80:
+                qc_passed = False
+            context['qc_passed'] = qc_passed
+
         return context
+
+    def _get_pgx_context(self, result):
+        """Get pharmacogenomics-specific context data."""
+        try:
+            from pharmacogenomics.models import PGxResult
+            from pharmacogenomics.services import RecommendationService
+        except ImportError:
+            return None
+
+        pgx_results = PGxResult.objects.filter(
+            molecular_result=result,
+            status__in=['CALLED', 'REVIEWED', 'REPORTED']
+        ).select_related('gene', 'phenotype', 'allele1', 'allele2')
+
+        if not pgx_results.exists():
+            return None
+
+        # Get all drug results
+        all_recommendations = []
+        actionable_recommendations = []
+
+        for pgx_result in pgx_results:
+            drug_results = pgx_result.drug_results.select_related(
+                'drug', 'recommendation'
+            )
+            for dr in drug_results:
+                all_recommendations.append(dr)
+                if dr.is_actionable:
+                    actionable_recommendations.append(dr)
+
+        # Generate clinical summary
+        rec_service = RecommendationService()
+        clinical_summary = rec_service.generate_clinical_summary(result)
+
+        return {
+            'pgx_results': list(pgx_results),
+            'all_recommendations': all_recommendations,
+            'actionable_recommendations': actionable_recommendations,
+            'clinical_summary': clinical_summary,
+            'show_gene_details': True,
+        }
+
+    def generate_pgx_report(self, result, generated_by=None):
+        """
+        Generate a PGx-specific PDF report.
+
+        Args:
+            result: MolecularResult instance with PGx results
+            generated_by: User generating the report
+
+        Returns:
+            Path to generated PDF file
+        """
+        if not result.is_reportable:
+            raise ValueError("Result must be finalized before generating report")
+
+        template_name = self.REPORT_TEMPLATES['PGX']
+
+        # Build context
+        context = self._build_context(result)
+
+        # Ensure PGx context is included
+        pgx_context = self._get_pgx_context(result)
+        if pgx_context:
+            context.update(pgx_context)
+        else:
+            raise ValueError("No PGx results available for this report")
+
+        # Render HTML
+        html_content = render_to_string(template_name, context)
+
+        # Generate PDF
+        pdf_content = self._render_pdf(html_content)
+
+        # Save to result
+        filename = f"{result.sample.sample_id}_{result.test_panel.code}_pgx_report.pdf"
+        result.report_file.save(filename, ContentFile(pdf_content))
+        result.report_generated = True
+        result.report_generated_at = timezone.now()
+        result.save()
+
+        return result.report_file.path
+
+    def generate_enhanced_ngs_report(self, result, generated_by=None):
+        """
+        Generate an enhanced NGS report with ClinVar/gnomAD annotations.
+
+        Args:
+            result: MolecularResult instance
+            generated_by: User generating the report
+
+        Returns:
+            Path to generated PDF file
+        """
+        if not result.is_reportable:
+            raise ValueError("Result must be finalized before generating report")
+
+        template_name = self.REPORT_TEMPLATES['NGS_ENHANCED']
+
+        # Build context
+        context = self._build_context(result)
+
+        # Ensure annotations are included
+        context['show_annotations'] = True
+        context['show_details'] = True
+        context['show_benign'] = False  # Usually not shown in clinical reports
+
+        # Render HTML
+        html_content = render_to_string(template_name, context)
+
+        # Generate PDF
+        pdf_content = self._render_pdf(html_content)
+
+        # Save to result
+        filename = f"{result.sample.sample_id}_{result.test_panel.code}_enhanced_report.pdf"
+        result.report_file.save(filename, ContentFile(pdf_content))
+        result.report_generated = True
+        result.report_generated_at = timezone.now()
+        result.save()
+
+        return result.report_file.path
 
     def _render_pdf(self, html_content):
         """Render HTML content to PDF bytes."""

@@ -7,6 +7,7 @@ from .batches import InstrumentRun, PCRPlate, PlateWell, NGSLibrary, NGSPool
 from .qc import QCMetricDefinition, ControlSample, QCRecord
 from .results import MolecularResult, PCRResult, SequencingResult, VariantCall
 from .reflex_rules import ReflexRule, ReflexTestOrder
+from .annotations import AnnotationCache, VariantAnnotation
 
 __all__ = [
     'MolecularSampleType',
@@ -30,4 +31,6 @@ __all__ = [
     'VariantCall',
     'ReflexRule',
     'ReflexTestOrder',
+    'AnnotationCache',
+    'VariantAnnotation',
 ]

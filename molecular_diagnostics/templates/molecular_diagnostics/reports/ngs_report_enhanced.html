@@ -1,0 +1,416 @@
+{% extends "molecular_diagnostics/reports/base_report.html" %}
+{% load static %}
+
+{% block title %}NGS Report - {{ sample_id }}{% endblock %}
+
+{% block content %}
+<div class="report-content">
+    <!-- Header -->
+    <div class="header">
+        <h1>{{ lab_name }}</h1>
+        <p class="lab-info">{{ lab_address }}</p>
+        <p class="lab-info">{{ lab_phone }} | {{ lab_accreditation }}</p>
+    </div>
+
+    <!-- Report Title -->
+    <div class="report-title">
+        <h2>Next-Generation Sequencing Report</h2>
+        <p class="test-info">{{ test_name }} ({{ test_code }})</p>
+    </div>
+
+    <!-- Patient Information -->
+    <div class="section">
+        <div class="section-title">Patient Information</div>
+        <table class="info-table">
+            <tr>
+                <td class="label">Patient Name</td>
+                <td>{{ patient_name }}</td>
+                <td class="label">Patient ID</td>
+                <td>{{ patient_id }}</td>
+            </tr>
+            <tr>
+                <td class="label">Date of Birth / Age</td>
+                <td>{{ patient_age }}</td>
+                <td class="label">Gender</td>
+                <td>{{ patient_gender }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Sample Information -->
+    <div class="section">
+        <div class="section-title">Sample Information</div>
+        <table class="info-table">
+            <tr>
+                <td class="label">Sample ID</td>
+                <td>{{ sample_id }}</td>
+                <td class="label">Sample Type</td>
+                <td>{{ sample_type }}</td>
+            </tr>
+            <tr>
+                <td class="label">Collection Date</td>
+                <td>{{ collection_date|date:"M d, Y H:i" }}</td>
+                <td class="label">Received Date</td>
+                <td>{{ received_date|date:"M d, Y H:i" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Overall Result -->
+    <div class="section">
+        <div class="section-title">Result Summary</div>
+        <div class="interpretation-box">
+            <p><strong>Overall Interpretation:</strong>
+                <span class="{% if interpretation == 'Positive' %}positive{% elif interpretation == 'Negative' %}negative{% endif %}">
+                    {{ interpretation }}
+                </span>
+            </p>
+            {% if clinical_significance %}
+            <p><strong>Clinical Significance:</strong></p>
+            <p>{{ clinical_significance }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Pathogenic/Likely Pathogenic Variants -->
+    {% if pathogenic_variants %}
+    <div class="section">
+        <div class="section-title">Pathogenic/Likely Pathogenic Variants</div>
+        <p class="variant-summary">{{ pathogenic_variants|length }} clinically significant variant(s) detected.</p>
+
+        {% for variant in pathogenic_variants %}
+        <div class="variant-detail-card pathogenic">
+            <div class="variant-header">
+                <span class="gene">{{ variant.gene.symbol }}</span>
+                <span class="classification pathogenic">{{ variant.get_classification_display }}</span>
+            </div>
+
+            <table class="variant-info-table">
+                <tr>
+                    <td class="label">cDNA Change</td>
+                    <td class="value">{{ variant.hgvs_c|default:"-" }}</td>
+                    <td class="label">Protein Change</td>
+                    <td class="value">{{ variant.hgvs_p|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Position</td>
+                    <td class="value">chr{{ variant.chromosome }}:{{ variant.position }}</td>
+                    <td class="label">Zygosity</td>
+                    <td class="value">{{ variant.get_zygosity_display|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">dbSNP ID</td>
+                    <td class="value">{{ variant.dbsnp_id|default:"-" }}</td>
+                    <td class="label">VAF</td>
+                    <td class="value">{% if variant.allele_frequency %}{{ variant.allele_frequency|floatformat:2 }}%{% else %}-{% endif %}</td>
+                </tr>
+            </table>
+
+            {% if variant.annotation %}
+            <div class="annotation-section">
+                <h4>ClinVar Annotation</h4>
+                <table class="annotation-table">
+                    <tr>
+                        <td class="label">Clinical Significance</td>
+                        <td>
+                            {{ variant.annotation.get_clinical_significance_display }}
+                            {% if variant.annotation.review_status_stars %}
+                            <span class="review-stars">
+                                {% for i in "1234"|make_list %}
+                                    {% if forloop.counter <= variant.annotation.review_status_stars %}★{% else %}☆{% endif %}
+                                {% endfor %}
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if variant.annotation.conditions %}
+                    <tr>
+                        <td class="label">Associated Conditions</td>
+                        <td>
+                            {% for cond in variant.annotation.conditions|slice:":3" %}
+                            {{ cond.name }}{% if not forloop.last %}; {% endif %}
+                            {% endfor %}
+                            {% if variant.annotation.conditions|length > 3 %}
+                            <em>(+{{ variant.annotation.conditions|length|add:"-3" }} more)</em>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td class="label">Population Frequency</td>
+                        <td>
+                            {% if variant.annotation.genome_af %}
+                            gnomAD: {{ variant.annotation.genome_af|floatformat:6 }} ({{ variant.annotation.genome_af|floatformat:2 }}%)
+                            {% elif variant.population_frequency %}
+                            {{ variant.population_frequency|floatformat:6 }}
+                            {% else %}
+                            Not observed / Very rare
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            {% endif %}
+
+            {% if variant.interpretation %}
+            <div class="interpretation">
+                <strong>Interpretation:</strong> {{ variant.interpretation }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Variants of Uncertain Significance -->
+    {% if vus_variants %}
+    <div class="section">
+        <div class="section-title">Variants of Uncertain Significance (VUS)</div>
+        <p class="variant-summary">{{ vus_variants|length }} VUS detected.</p>
+
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Gene</th>
+                    <th>Variant</th>
+                    <th>Protein Change</th>
+                    <th>Zygosity</th>
+                    <th>Pop. Freq.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for variant in vus_variants %}
+                <tr>
+                    <td class="gene-symbol">{{ variant.gene.symbol }}</td>
+                    <td class="variant-hgvs">{{ variant.hgvs_c|default:"-" }}</td>
+                    <td>{{ variant.hgvs_p|default:"-" }}</td>
+                    <td>{{ variant.get_zygosity_display|default:"-" }}</td>
+                    <td class="pop-freq">
+                        {% if variant.annotation and variant.annotation.genome_af %}
+                        {{ variant.annotation.genome_af|floatformat:4 }}
+                        {% elif variant.population_frequency %}
+                        {{ variant.population_frequency|floatformat:4 }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p class="vus-note">
+            <strong>Note:</strong> Variants of uncertain significance (VUS) are variants for which there is currently
+            insufficient evidence to classify as pathogenic or benign. These variants may be reclassified as more
+            information becomes available.
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Benign Variants (Optional - often not included in clinical reports) -->
+    {% if benign_variants and show_benign %}
+    <div class="section">
+        <div class="section-title">Benign/Likely Benign Variants</div>
+        <p class="benign-note">{{ benign_variants|length }} benign variant(s) detected (not clinically significant).</p>
+    </div>
+    {% endif %}
+
+    <!-- QC Metrics -->
+    {% if sequencing_metrics %}
+    <div class="section">
+        <div class="section-title">Quality Control Metrics</div>
+        <table class="info-table qc-metrics">
+            <tr>
+                <td class="label">Total Reads</td>
+                <td>{{ sequencing_metrics.total_reads|default:"-" }}</td>
+                <td class="label">Mean Coverage</td>
+                <td>{{ sequencing_metrics.mean_coverage|floatformat:1 }}x</td>
+            </tr>
+            <tr>
+                <td class="label">Q30 Percentage</td>
+                <td>{{ sequencing_metrics.q30_percentage|floatformat:1 }}%</td>
+                <td class="label">On-Target</td>
+                <td>{{ sequencing_metrics.on_target_percentage|floatformat:1 }}%</td>
+            </tr>
+        </table>
+
+        <p class="qc-status {% if qc_passed %}qc-pass{% else %}qc-fail{% endif %}">
+            {% if qc_passed %}
+            Quality metrics meet established thresholds.
+            {% else %}
+            <strong>Warning:</strong> Some quality metrics are below optimal thresholds.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Methodology -->
+    <div class="section">
+        <div class="section-title">Test Methodology</div>
+        <p>{{ methodology|default:"Next-generation sequencing (NGS) was performed to analyze the coding regions and exon-intron boundaries of the genes included in this panel." }}</p>
+    </div>
+
+    <!-- Limitations -->
+    {% if limitations %}
+    <div class="section">
+        <div class="section-title">Limitations</div>
+        <p>{{ limitations }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Recommendations -->
+    {% if recommendations %}
+    <div class="section">
+        <div class="section-title">Recommendations</div>
+        <p>{{ recommendations }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Signatures -->
+    <div class="signature-section">
+        <div class="signature-block">
+            <div class="signature-line">
+                {% if performed_by %}{{ performed_by.get_full_name }}{% endif %}
+            </div>
+            <p>Performed by</p>
+            <p class="sig-date">{{ performed_at|date:"M d, Y" }}</p>
+        </div>
+        <div class="signature-block">
+            <div class="signature-line">
+                {% if approved_by %}{{ approved_by.get_full_name }}{% endif %}
+            </div>
+            <p>Approved by</p>
+            <p class="sig-date">{{ approved_at|date:"M d, Y" }}</p>
+        </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <p>This report is intended for the healthcare provider ordering the test. Results should be interpreted
+        in the context of the patient's clinical findings, family history, and other laboratory data.
+        Genetic counseling is recommended for patients and families. This test was performed in a
+        laboratory certified under the Clinical Laboratory Improvement Amendments (CLIA).</p>
+        <p><strong>Report generated:</strong> {{ report_date|date:"M d, Y H:i" }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .variant-detail-card {
+        border: 2px solid #e2e8f0;
+        margin: 15px 0;
+        padding: 15px;
+        border-radius: 8px;
+    }
+    .variant-detail-card.pathogenic {
+        border-color: #c53030;
+        background-color: #fff5f5;
+    }
+    .variant-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .variant-header .gene {
+        font-size: 1.2em;
+        font-weight: bold;
+        font-family: monospace;
+    }
+    .variant-header .classification {
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    .variant-header .classification.pathogenic {
+        background-color: #c53030;
+        color: white;
+    }
+    .variant-info-table {
+        width: 100%;
+        margin: 10px 0;
+    }
+    .variant-info-table td {
+        padding: 4px 8px;
+    }
+    .variant-info-table .label {
+        font-weight: bold;
+        width: 20%;
+        color: #4a5568;
+    }
+    .variant-info-table .value {
+        font-family: monospace;
+        width: 30%;
+    }
+    .annotation-section {
+        background-color: #f7fafc;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+    }
+    .annotation-section h4 {
+        color: #2c5282;
+        margin: 0 0 10px 0;
+    }
+    .annotation-table {
+        width: 100%;
+    }
+    .annotation-table td {
+        padding: 4px 8px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .annotation-table .label {
+        width: 30%;
+        font-weight: bold;
+    }
+    .review-stars {
+        color: #d69e2e;
+    }
+    .variant-summary {
+        font-style: italic;
+        margin-bottom: 15px;
+    }
+    .gene-symbol {
+        font-weight: bold;
+        font-family: monospace;
+    }
+    .variant-hgvs {
+        font-family: monospace;
+    }
+    .pop-freq {
+        text-align: right;
+        font-family: monospace;
+    }
+    .vus-note {
+        font-size: 0.9em;
+        color: #718096;
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #fef3c7;
+        border-radius: 4px;
+    }
+    .benign-note {
+        color: #38a169;
+    }
+    .qc-status {
+        padding: 8px;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+    .qc-pass {
+        background-color: #c6f6d5;
+        color: #276749;
+    }
+    .qc-fail {
+        background-color: #fed7d7;
+        color: #c53030;
+    }
+    .sig-date {
+        font-size: 0.9em;
+        color: #718096;
+    }
+</style>
+{% endblock %}

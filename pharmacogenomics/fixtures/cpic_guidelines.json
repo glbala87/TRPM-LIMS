@@ -1,0 +1,324 @@
+[
+  {
+    "model": "pharmacogenomics.drug",
+    "pk": 1,
+    "fields": {
+      "name": "Codeine",
+      "brand_names": ["Tylenol with Codeine", "Robitussin AC"],
+      "drug_class": "ANALGESIC",
+      "rxnorm_id": "2670",
+      "description": "Opioid analgesic prodrug converted to morphine by CYP2D6",
+      "has_cpic_guideline": true,
+      "has_fda_label": true,
+      "cpic_level": "A",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drug",
+    "pk": 2,
+    "fields": {
+      "name": "Tramadol",
+      "brand_names": ["Ultram", "ConZip"],
+      "drug_class": "ANALGESIC",
+      "rxnorm_id": "10689",
+      "description": "Opioid analgesic prodrug activated by CYP2D6",
+      "has_cpic_guideline": true,
+      "has_fda_label": true,
+      "cpic_level": "A",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drug",
+    "pk": 3,
+    "fields": {
+      "name": "Clopidogrel",
+      "brand_names": ["Plavix"],
+      "drug_class": "ANTIPLATELET",
+      "rxnorm_id": "32968",
+      "description": "Antiplatelet prodrug activated by CYP2C19",
+      "has_cpic_guideline": true,
+      "has_fda_label": true,
+      "cpic_level": "A",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drug",
+    "pk": 4,
+    "fields": {
+      "name": "Warfarin",
+      "brand_names": ["Coumadin", "Jantoven"],
+      "drug_class": "ANTICOAGULANT",
+      "rxnorm_id": "11289",
+      "description": "Anticoagulant metabolized by CYP2C9, affected by VKORC1",
+      "has_cpic_guideline": true,
+      "has_fda_label": true,
+      "cpic_level": "A",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drug",
+    "pk": 5,
+    "fields": {
+      "name": "Omeprazole",
+      "brand_names": ["Prilosec"],
+      "drug_class": "PPI",
+      "rxnorm_id": "7646",
+      "description": "Proton pump inhibitor metabolized by CYP2C19",
+      "has_cpic_guideline": true,
+      "has_fda_label": true,
+      "cpic_level": "A",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drug",
+    "pk": 6,
+    "fields": {
+      "name": "Simvastatin",
+      "brand_names": ["Zocor"],
+      "drug_class": "CARDIOVASCULAR",
+      "rxnorm_id": "36567",
+      "description": "Statin transported by SLCO1B1",
+      "has_cpic_guideline": true,
+      "has_fda_label": true,
+      "cpic_level": "A",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.druggeneinteraction",
+    "pk": 1,
+    "fields": {
+      "drug": 1,
+      "gene": 1,
+      "interaction_type": "PK",
+      "evidence_level": "1A",
+      "description": "Codeine is a prodrug that requires conversion to morphine by CYP2D6 for analgesic effect.",
+      "clinical_summary": "CYP2D6 PMs have reduced morphine formation and may experience inadequate pain relief. UMs have increased morphine formation and risk of toxicity.",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.druggeneinteraction",
+    "pk": 2,
+    "fields": {
+      "drug": 2,
+      "gene": 1,
+      "interaction_type": "PK",
+      "evidence_level": "1A",
+      "description": "Tramadol is a prodrug converted to O-desmethyltramadol (M1) by CYP2D6.",
+      "clinical_summary": "CYP2D6 metabolizer status affects tramadol efficacy and toxicity risk.",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.druggeneinteraction",
+    "pk": 3,
+    "fields": {
+      "drug": 3,
+      "gene": 2,
+      "interaction_type": "PK",
+      "evidence_level": "1A",
+      "description": "Clopidogrel is a prodrug requiring CYP2C19 activation to its active metabolite.",
+      "clinical_summary": "CYP2C19 PMs and IMs have reduced active metabolite formation and increased cardiovascular event risk.",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.druggeneinteraction",
+    "pk": 4,
+    "fields": {
+      "drug": 4,
+      "gene": 3,
+      "interaction_type": "PK",
+      "evidence_level": "1A",
+      "description": "S-warfarin is primarily metabolized by CYP2C9.",
+      "clinical_summary": "CYP2C9 poor metabolizers require significantly lower warfarin doses to avoid bleeding.",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.druggeneinteraction",
+    "pk": 5,
+    "fields": {
+      "drug": 5,
+      "gene": 2,
+      "interaction_type": "PK",
+      "evidence_level": "1A",
+      "description": "Omeprazole is metabolized primarily by CYP2C19.",
+      "clinical_summary": "CYP2C19 RMs and UMs may have reduced efficacy. PMs have increased drug exposure.",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 1,
+    "fields": {
+      "interaction": 1,
+      "phenotype": 1,
+      "recommendation_strength": "STRONG",
+      "action": "AVOID",
+      "recommendation_text": "Avoid codeine use due to lack of efficacy. Consider alternative analgesics not metabolized by CYP2D6.",
+      "dosing_guidance": "Select alternative analgesic: morphine, oxymorphone, or non-opioid.",
+      "alternative_drugs": ["morphine", "oxymorphone", "fentanyl", "acetaminophen", "NSAIDs"],
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 2,
+    "fields": {
+      "interaction": 1,
+      "phenotype": 2,
+      "recommendation_strength": "MODERATE",
+      "action": "MONITOR",
+      "recommendation_text": "Use codeine with close monitoring for adequate pain relief. Consider alternative if inadequate response.",
+      "dosing_guidance": "Start with standard dose. Monitor response and consider alternative if ineffective.",
+      "alternative_drugs": ["morphine", "oxymorphone"],
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 3,
+    "fields": {
+      "interaction": 1,
+      "phenotype": 3,
+      "recommendation_strength": "STRONG",
+      "action": "STANDARD",
+      "recommendation_text": "Use standard codeine dosing per label.",
+      "dosing_guidance": "Follow standard prescribing guidelines.",
+      "alternative_drugs": [],
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 4,
+    "fields": {
+      "interaction": 1,
+      "phenotype": 4,
+      "recommendation_strength": "STRONG",
+      "action": "AVOID",
+      "recommendation_text": "Avoid codeine due to increased morphine formation and risk of respiratory depression. Use alternative analgesic.",
+      "dosing_guidance": "Select alternative analgesic: morphine (with reduced dose), non-opioid options.",
+      "alternative_drugs": ["morphine (reduced dose)", "acetaminophen", "NSAIDs"],
+      "monitoring_recommendations": "If codeine must be used, start with lowest possible dose with close monitoring.",
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 5,
+    "fields": {
+      "interaction": 3,
+      "phenotype": 5,
+      "recommendation_strength": "STRONG",
+      "action": "ALTERNATIVE",
+      "recommendation_text": "Use alternative antiplatelet therapy. Clopidogrel is ineffective in CYP2C19 poor metabolizers.",
+      "dosing_guidance": "Consider prasugrel or ticagrelor as alternative.",
+      "alternative_drugs": ["prasugrel", "ticagrelor"],
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 6,
+    "fields": {
+      "interaction": 3,
+      "phenotype": 6,
+      "recommendation_strength": "MODERATE",
+      "action": "ALTERNATIVE",
+      "recommendation_text": "Consider alternative antiplatelet therapy due to reduced clopidogrel activation.",
+      "dosing_guidance": "If clopidogrel used, may consider double loading dose (600mg) though evidence limited.",
+      "alternative_drugs": ["prasugrel", "ticagrelor"],
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 7,
+    "fields": {
+      "interaction": 3,
+      "phenotype": 7,
+      "recommendation_strength": "STRONG",
+      "action": "STANDARD",
+      "recommendation_text": "Use standard clopidogrel dosing per label.",
+      "dosing_guidance": "Standard loading dose 300-600mg, maintenance 75mg daily.",
+      "alternative_drugs": [],
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 8,
+    "fields": {
+      "interaction": 3,
+      "phenotype": 8,
+      "recommendation_strength": "STRONG",
+      "action": "STANDARD",
+      "recommendation_text": "Use standard clopidogrel dosing per label.",
+      "dosing_guidance": "Standard loading dose 300-600mg, maintenance 75mg daily.",
+      "alternative_drugs": [],
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "pharmacogenomics.drugrecommendation",
+    "pk": 9,
+    "fields": {
+      "interaction": 3,
+      "phenotype": 9,
+      "recommendation_strength": "STRONG",
+      "action": "STANDARD",
+      "recommendation_text": "Use standard clopidogrel dosing per label. Enhanced response may be beneficial.",
+      "dosing_guidance": "Standard dosing. May have enhanced antiplatelet effect.",
+      "alternative_drugs": [],
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  }
+]

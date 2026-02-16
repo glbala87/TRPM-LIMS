@@ -1,0 +1,501 @@
+{% extends "molecular_diagnostics/reports/base_report.html" %}
+{% load static %}
+
+{% block title %}Pharmacogenomics Report - {{ sample_id }}{% endblock %}
+
+{% block content %}
+<div class="report-content">
+    <!-- Header -->
+    <div class="header">
+        <h1>{{ lab_name }}</h1>
+        <p class="lab-info">{{ lab_address }}</p>
+        <p class="lab-info">{{ lab_phone }} | {{ lab_accreditation }}</p>
+    </div>
+
+    <!-- Report Title -->
+    <div class="report-title">
+        <h2>Pharmacogenomics (PGx) Report</h2>
+        <p class="test-info">{{ panel_name|default:"Pharmacogenomics Panel" }}</p>
+    </div>
+
+    <!-- Patient Information -->
+    <div class="section">
+        <div class="section-title">Patient Information</div>
+        <table class="info-table">
+            <tr>
+                <td class="label">Patient Name</td>
+                <td>{{ patient_name }}</td>
+                <td class="label">Patient ID</td>
+                <td>{{ patient_id }}</td>
+            </tr>
+            <tr>
+                <td class="label">Date of Birth / Age</td>
+                <td>{{ patient_age }}</td>
+                <td class="label">Gender</td>
+                <td>{{ patient_gender }}</td>
+            </tr>
+            <tr>
+                <td class="label">Sample ID</td>
+                <td>{{ sample_id }}</td>
+                <td class="label">Collection Date</td>
+                <td>{{ collection_date|date:"M d, Y" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- PGx Results Summary -->
+    <div class="section">
+        <div class="section-title">Pharmacogenomic Results Summary</div>
+
+        <table class="results-table pgx-summary-table">
+            <thead>
+                <tr>
+                    <th>Gene</th>
+                    <th>Diplotype</th>
+                    <th>Phenotype</th>
+                    <th>Activity Score</th>
+                    <th>Clinical Implications</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in pgx_results %}
+                <tr class="phenotype-{{ result.phenotype.code|lower|default:'unknown' }}">
+                    <td class="gene-symbol">{{ result.gene.symbol }}</td>
+                    <td class="diplotype">{{ result.diplotype_display }}</td>
+                    <td class="phenotype">
+                        <span class="phenotype-badge {{ result.phenotype.code|lower|default:'unknown' }}">
+                            {{ result.phenotype.name|default:"Unknown" }}
+                        </span>
+                    </td>
+                    <td class="activity-score">{{ result.activity_score|floatformat:1|default:"-" }}</td>
+                    <td class="implications">{{ result.phenotype.clinical_implications|truncatewords:15|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">No pharmacogenomic results available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Actionable Drug Recommendations -->
+    {% if actionable_recommendations %}
+    <div class="section actionable-section">
+        <div class="section-title">
+            <span class="warning-icon">&#9888;</span>
+            Actionable Drug Recommendations
+        </div>
+
+        {% for rec in actionable_recommendations %}
+        <div class="drug-recommendation-card {{ rec.action|lower }}">
+            <div class="drug-header">
+                <span class="drug-name">{{ rec.drug.name }}</span>
+                <span class="action-badge {{ rec.action|lower }}">{{ rec.get_action_display }}</span>
+            </div>
+
+            <div class="drug-details">
+                <p class="gene-info">
+                    <strong>Gene:</strong> {{ rec.pgx_result.gene.symbol }} |
+                    <strong>Diplotype:</strong> {{ rec.pgx_result.diplotype_display }} |
+                    <strong>Phenotype:</strong> {{ rec.pgx_result.phenotype.name }}
+                </p>
+
+                <div class="recommendation-text">
+                    {{ rec.recommendation_text }}
+                </div>
+
+                {% if rec.recommendation.dosing_guidance %}
+                <div class="dosing-guidance">
+                    <strong>Dosing Guidance:</strong>
+                    {{ rec.recommendation.dosing_guidance }}
+                </div>
+                {% endif %}
+
+                {% if rec.recommendation.alternative_drugs %}
+                <div class="alternatives">
+                    <strong>Alternative Options:</strong>
+                    {% for alt in rec.recommendation.alternative_drugs %}
+                    {{ alt }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- All Drug Recommendations Table -->
+    {% if all_recommendations %}
+    <div class="section">
+        <div class="section-title">Complete Drug-Gene Interaction Summary</div>
+
+        <table class="results-table drug-table">
+            <thead>
+                <tr>
+                    <th>Drug</th>
+                    <th>Gene</th>
+                    <th>Phenotype</th>
+                    <th>Recommendation</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in all_recommendations %}
+                <tr class="action-{{ rec.action|lower }}">
+                    <td class="drug-name">{{ rec.drug.name }}</td>
+                    <td class="gene-symbol">{{ rec.pgx_result.gene.symbol }}</td>
+                    <td class="phenotype">{{ rec.pgx_result.phenotype.name|default:"-" }}</td>
+                    <td class="recommendation">{{ rec.recommendation_text|truncatewords:20 }}</td>
+                    <td>
+                        <span class="action-badge {{ rec.action|lower }}">
+                            {{ rec.get_action_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Clinical Summary -->
+    {% if clinical_summary %}
+    <div class="section">
+        <div class="section-title">Clinical Summary</div>
+        <div class="clinical-summary-box">
+            {{ clinical_summary|linebreaks }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Gene Details (Optional Expanded View) -->
+    {% if show_gene_details %}
+    <div class="section">
+        <div class="section-title">Detailed Gene Results</div>
+
+        {% for result in pgx_results %}
+        <div class="gene-detail-card">
+            <h4>{{ result.gene.symbol }} - {{ result.gene.name }}</h4>
+
+            <table class="gene-detail-table">
+                <tr>
+                    <td class="label">Diplotype</td>
+                    <td class="value">{{ result.diplotype_display }}</td>
+                    <td class="label">Activity Score</td>
+                    <td class="value">{{ result.activity_score|floatformat:2|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Allele 1</td>
+                    <td class="value">{{ result.allele1.name|default:"-" }} ({{ result.allele1.get_function_display|default:"-" }})</td>
+                    <td class="label">Allele 2</td>
+                    <td class="value">{{ result.allele2.name|default:"-" }} ({{ result.allele2.get_function_display|default:"-" }})</td>
+                </tr>
+                {% if result.copy_number and result.gene.copy_number_relevant %}
+                <tr>
+                    <td class="label">Copy Number</td>
+                    <td class="value">{{ result.copy_number }}</td>
+                    <td class="label">Hybrid Allele</td>
+                    <td class="value">{% if result.has_hybrid %}Yes{% else %}No{% endif %}</td>
+                </tr>
+                {% endif %}
+            </table>
+
+            {% if result.detected_variants %}
+            <div class="detected-variants">
+                <strong>Detected Variants:</strong>
+                <ul>
+                    {% for var in result.detected_variants %}
+                    <li>{{ var.hgvs_c|default:var.dbsnp_id }} ({{ var.zygosity }})</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="phenotype-description">
+                <strong>Phenotype:</strong> {{ result.phenotype.name|default:"Unknown" }}
+                {% if result.phenotype.clinical_implications %}
+                <p>{{ result.phenotype.clinical_implications }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Methodology -->
+    <div class="section">
+        <div class="section-title">Test Methodology</div>
+        <p>Pharmacogenomic genotyping was performed using {{ methodology|default:"targeted sequencing" }}
+        to detect known star alleles and variants associated with drug metabolism phenotypes.
+        Diplotype calling and phenotype assignment follow CPIC (Clinical Pharmacogenetics Implementation Consortium) guidelines.</p>
+    </div>
+
+    <!-- Limitations -->
+    <div class="section">
+        <div class="section-title">Limitations</div>
+        <ul class="limitations-list">
+            <li>This test detects only the variants specifically included in the assay. Rare or novel variants may not be detected.</li>
+            <li>Phenotype predictions are based on currently available scientific evidence and may be revised as new information becomes available.</li>
+            <li>Drug response is influenced by many factors including other genetic variants, drug interactions, organ function, and patient compliance.</li>
+            <li>Results should be used in conjunction with clinical judgment and other relevant factors.</li>
+            {% if limitations %}
+            <li>{{ limitations }}</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <!-- Recommendations -->
+    {% if recommendations %}
+    <div class="section">
+        <div class="section-title">General Recommendations</div>
+        <p>{{ recommendations }}</p>
+    </div>
+    {% endif %}
+
+    <!-- References -->
+    <div class="section">
+        <div class="section-title">References</div>
+        <p class="references">
+            Drug recommendations are based on CPIC guidelines. For full guideline details, visit
+            <a href="https://cpicpgx.org/">cpicpgx.org</a>.
+        </p>
+    </div>
+
+    <!-- Signatures -->
+    <div class="signature-section">
+        <div class="signature-block">
+            <div class="signature-line">
+                {% if performed_by %}{{ performed_by.get_full_name }}{% endif %}
+            </div>
+            <p>Performed by</p>
+            <p class="sig-date">{{ performed_at|date:"M d, Y" }}</p>
+        </div>
+        <div class="signature-block">
+            <div class="signature-line">
+                {% if approved_by %}{{ approved_by.get_full_name }}{% endif %}
+            </div>
+            <p>Approved by</p>
+            <p class="sig-date">{{ approved_at|date:"M d, Y" }}</p>
+        </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <p>This pharmacogenomic report provides information to assist healthcare providers in making
+        drug therapy decisions. Results should be interpreted in the context of other clinical information.
+        Pharmacogenetic testing does not replace standard clinical monitoring. Genetic counseling may be beneficial.</p>
+        <p><strong>Report generated:</strong> {{ report_date|date:"M d, Y H:i" }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    /* PGx-specific styles */
+    .pgx-summary-table .gene-symbol {
+        font-weight: bold;
+        font-family: monospace;
+    }
+    .pgx-summary-table .diplotype {
+        font-family: monospace;
+    }
+    .phenotype-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+    .phenotype-badge.pm {
+        background-color: #c53030;
+        color: white;
+    }
+    .phenotype-badge.im {
+        background-color: #dd6b20;
+        color: white;
+    }
+    .phenotype-badge.nm {
+        background-color: #38a169;
+        color: white;
+    }
+    .phenotype-badge.rm {
+        background-color: #3182ce;
+        color: white;
+    }
+    .phenotype-badge.um {
+        background-color: #805ad5;
+        color: white;
+    }
+    .phenotype-badge.unknown {
+        background-color: #718096;
+        color: white;
+    }
+
+    /* Actionable Section */
+    .actionable-section .section-title {
+        background-color: #c53030;
+    }
+    .actionable-section .warning-icon {
+        margin-right: 8px;
+    }
+
+    /* Drug Recommendation Cards */
+    .drug-recommendation-card {
+        border: 2px solid #e2e8f0;
+        margin: 15px 0;
+        padding: 15px;
+        border-radius: 8px;
+    }
+    .drug-recommendation-card.avoid,
+    .drug-recommendation-card.alternative {
+        border-color: #c53030;
+        background-color: #fff5f5;
+    }
+    .drug-recommendation-card.reduce,
+    .drug-recommendation-card.caution {
+        border-color: #dd6b20;
+        background-color: #fffaf0;
+    }
+    .drug-recommendation-card.monitor {
+        border-color: #d69e2e;
+        background-color: #fffff0;
+    }
+    .drug-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .drug-header .drug-name {
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+    .action-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .action-badge.avoid,
+    .action-badge.alternative {
+        background-color: #c53030;
+        color: white;
+    }
+    .action-badge.reduce,
+    .action-badge.increase,
+    .action-badge.caution {
+        background-color: #dd6b20;
+        color: white;
+    }
+    .action-badge.monitor {
+        background-color: #d69e2e;
+        color: white;
+    }
+    .action-badge.standard {
+        background-color: #38a169;
+        color: white;
+    }
+    .drug-details {
+        font-size: 0.95em;
+    }
+    .drug-details .gene-info {
+        color: #718096;
+        margin-bottom: 10px;
+    }
+    .drug-details .recommendation-text {
+        margin: 10px 0;
+    }
+    .drug-details .dosing-guidance,
+    .drug-details .alternatives {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: rgba(255,255,255,0.7);
+        border-radius: 4px;
+    }
+
+    /* Drug Table */
+    .drug-table .drug-name {
+        font-weight: bold;
+    }
+    .drug-table tr.action-avoid,
+    .drug-table tr.action-alternative {
+        background-color: #fff5f5;
+    }
+    .drug-table tr.action-reduce,
+    .drug-table tr.action-caution {
+        background-color: #fffaf0;
+    }
+
+    /* Gene Detail Cards */
+    .gene-detail-card {
+        border: 1px solid #e2e8f0;
+        margin: 15px 0;
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #f7fafc;
+    }
+    .gene-detail-card h4 {
+        color: #2c5282;
+        margin: 0 0 10px 0;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 8px;
+    }
+    .gene-detail-table {
+        width: 100%;
+        margin: 10px 0;
+    }
+    .gene-detail-table td {
+        padding: 4px 8px;
+    }
+    .gene-detail-table .label {
+        font-weight: bold;
+        width: 20%;
+        color: #4a5568;
+    }
+    .detected-variants {
+        margin: 10px 0;
+    }
+    .detected-variants ul {
+        margin: 5px 0 5px 20px;
+        font-family: monospace;
+        font-size: 0.9em;
+    }
+    .phenotype-description {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 4px;
+    }
+
+    /* Clinical Summary */
+    .clinical-summary-box {
+        border: 2px solid #2c5282;
+        padding: 15px;
+        background-color: #ebf8ff;
+        border-radius: 8px;
+    }
+
+    /* Limitations */
+    .limitations-list {
+        margin-left: 20px;
+    }
+    .limitations-list li {
+        margin: 5px 0;
+    }
+
+    /* References */
+    .references {
+        font-size: 0.9em;
+        color: #718096;
+    }
+    .references a {
+        color: #2c5282;
+    }
+</style>
+{% endblock %}

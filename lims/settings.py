@@ -81,6 +81,9 @@ INSTALLED_APPS = [
     'qms',               # Quality management system (document management)
     'messaging',         # Messaging, notifications, activity streams
     'pathology',         # Histology/pathology with TNM staging
+
+    # Phase 6 apps - Molecular/Genomics Enhancements
+    'pharmacogenomics',  # PGx module for drug-gene interactions
 ]
 
 MIDDLEWARE = [
@@ -228,3 +231,21 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+
+# ===========================================
+# Variant Annotation Settings
+# ===========================================
+
+# NCBI E-utilities (ClinVar)
+NCBI_API_KEY = os.environ.get('NCBI_API_KEY', '')
+NCBI_EMAIL = os.environ.get('NCBI_EMAIL', 'admin@trpm-lims.org')
+
+# Annotation cache settings
+ANNOTATION_CACHE_TTL_DAYS = 30
+
+# ===========================================
+# HL7/FHIR Integration Settings
+# ===========================================
+
+# FHIR server configuration
+FHIR_BASE_URL = os.environ.get('FHIR_BASE_URL', 'http://localhost:8000/fhir')
