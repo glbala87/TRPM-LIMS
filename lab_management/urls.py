@@ -1,7 +1,11 @@
 from django.urls import path
+from django.views.generic import RedirectView
 from lab_management import views
 
 urlpatterns = [
+    # Home - redirect to analytics dashboard
+    path('', RedirectView.as_view(pattern_name='analytics:dashboard', permanent=False), name='home'),
+
     # Patients/Registration
     path('patients/register/', views.patient_registration, name='patient_registration'),
     path('patients/', views.patient_list, name='patient_list'),  # This already handles both the list and search functionality
