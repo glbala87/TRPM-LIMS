@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ gene.symbol }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'pharmacogenomics:gene-dashboard' %}">Pharmacogenomics</a></li><li class="breadcrumb-item active">{{ gene.symbol }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ gene.symbol }} <small class="text-muted">{{ gene.name }}</small></h2>
+<div class="row">
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Gene Information</div><div class="card-body">
+<p><strong>Category:</strong> {{ gene.get_category_display }}</p>
+<p><strong>Chromosome:</strong> {{ gene.chromosome|default:"-" }}</p>
+{% if gene.start_position %}<p><strong>Position:</strong> {{ gene.start_position }} - {{ gene.end_position }}</p>{% endif %}
+<p><strong>Reference:</strong> {{ gene.reference_sequence|default:"-" }}</p>
+<p><strong>Ensembl:</strong> {{ gene.ensembl_id|default:"-" }}</p>
+<p><strong>NCBI:</strong> {{ gene.ncbi_gene_id|default:"-" }}</p>
+<p><strong>PharmVar:</strong> {{ gene.pharmvar_id|default:"-" }}</p>
+<p><strong>Activity Score:</strong> {% if gene.uses_activity_score %}Yes{% else %}No{% endif %}</p>
+<p><strong>CNV Relevant:</strong> {% if gene.copy_number_relevant %}Yes{% else %}No{% endif %}</p>
+{% if gene.description %}<p><strong>Description:</strong> {{ gene.description }}</p>{% endif %}
+{% if gene.clinical_importance %}<p><strong>Clinical Importance:</strong> {{ gene.clinical_importance }}</p>{% endif %}
+</div></div>
+<div class="card mb-3"><div class="card-header">Phenotypes ({{ phenotypes|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Phenotype</th><th>Code</th><th>Activity Score Range</th></tr></thead>
+<tbody>{% for p in phenotypes %}<tr><td>{{ p.name }}</td><td><code>{{ p.code }}</code></td><td>{% if p.activity_score_min is not None %}{{ p.activity_score_min }} - {{ p.activity_score_max }}{% else %}-{% endif %}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No phenotypes defined.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Star Alleles ({{ alleles|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Allele</th><th>Function</th><th>Activity</th><th>Ref</th></tr></thead>
+<tbody>{% for a in alleles %}<tr><td><strong>{{ a.gene.symbol }}{{ a.name }}</strong></td><td><span class="badge bg-{% if a.function == 'NORMAL' %}success{% elif a.function == 'NO_FUNCTION' %}danger{% elif a.function == 'DECREASED' %}warning{% elif a.function == 'INCREASED' %}info{% else %}secondary{% endif %}">{{ a.get_function_display }}</span></td><td>{{ a.activity_score|default:"-" }}</td><td>{% if a.is_reference %}<i class="fas fa-check text-success"></i>{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No alleles defined.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="card mb-3"><div class="card-header">Drug Interactions ({{ drug_interactions|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Drug</th><th>Type</th><th>Evidence</th></tr></thead>
+<tbody>{% for di in drug_interactions %}<tr><td><a href="{% url 'pharmacogenomics:drug-detail' di.drug.pk %}">{{ di.drug.name }}</a></td><td>{{ di.get_interaction_type_display }}</td><td>{{ di.evidence_level|default:"-" }}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No drug interactions.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+</div>
+{% endblock %}

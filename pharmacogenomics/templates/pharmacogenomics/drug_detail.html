@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ drug.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'pharmacogenomics:gene-dashboard' %}">Pharmacogenomics</a></li><li class="breadcrumb-item"><a href="{% url 'pharmacogenomics:drug-list' %}">Drugs</a></li><li class="breadcrumb-item active">{{ drug.name }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ drug.name }}</h2>
+<div class="row">
+<div class="col-md-5">
+<div class="card mb-3"><div class="card-header">Drug Information</div><div class="card-body">
+<p><strong>Class:</strong> {{ drug.get_drug_class_display }}</p>
+{% if drug.brand_names %}<p><strong>Brand Names:</strong> {{ drug.brand_names|join:", " }}</p>{% endif %}
+<p><strong>ATC Code:</strong> {{ drug.atc_code|default:"-" }}</p>
+<p><strong>RxNorm:</strong> {{ drug.rxnorm_id|default:"-" }}</p>
+<p><strong>DrugBank:</strong> {{ drug.drugbank_id|default:"-" }}</p>
+<p><strong>CPIC Guideline:</strong> {% if drug.has_cpic_guideline %}Level {{ drug.cpic_level }}{% else %}No{% endif %}</p>
+<p><strong>FDA PGx Label:</strong> {% if drug.has_fda_label %}Yes{% else %}No{% endif %}</p>
+{% if drug.description %}<p><strong>Description:</strong> {{ drug.description }}</p>{% endif %}
+{% if drug.mechanism_of_action %}<p><strong>Mechanism:</strong> {{ drug.mechanism_of_action }}</p>{% endif %}
+</div></div>
+</div>
+<div class="col-md-7">
+<div class="card mb-3"><div class="card-header">Gene Interactions ({{ gene_interactions|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Gene</th><th>Type</th><th>Evidence</th><th>Recommendations</th></tr></thead>
+<tbody>{% for gi in gene_interactions %}<tr><td><a href="{% url 'pharmacogenomics:gene-detail' gi.gene.pk %}">{{ gi.gene.symbol }}</a></td><td>{{ gi.get_interaction_type_display }}</td><td>{{ gi.evidence_level|default:"-" }}</td><td>{{ gi.recommendations.count }}</td></tr>{% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No gene interactions.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+</div>
+{% endblock %}

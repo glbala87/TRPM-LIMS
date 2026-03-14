@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}PGx Result - {{ result.gene.symbol }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'pharmacogenomics:gene-dashboard' %}">Pharmacogenomics</a></li><li class="breadcrumb-item"><a href="{% url 'pharmacogenomics:result-list' %}">Results</a></li><li class="breadcrumb-item active">{{ result.gene.symbol }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ result.molecular_result.sample }} - {{ result.gene.symbol }} <span class="badge bg-{% if result.status == 'REPORTED' %}success{% elif result.status == 'FAILED' %}danger{% else %}secondary{% endif %}">{{ result.get_status_display }}</span></h2>
+<div class="row">
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Genotype Result</div><div class="card-body">
+<p><strong>Gene:</strong> <a href="{% url 'pharmacogenomics:gene-detail' result.gene.pk %}">{{ result.gene.symbol }}</a> ({{ result.gene.name }})</p>
+<p><strong>Diplotype:</strong> <code class="fs-5">{{ result.diplotype_display }}</code></p>
+<p><strong>Activity Score:</strong> {{ result.activity_score|default:"-" }}</p>
+<p><strong>Phenotype:</strong> {% if result.phenotype %}<span class="badge bg-{% if result.phenotype.code == 'PM' %}danger{% elif result.phenotype.code == 'IM' %}warning{% elif result.phenotype.code == 'UM' %}info{% else %}success{% endif %} fs-6">{{ result.phenotype.name }}</span>{% else %}-{% endif %}</p>
+{% if result.copy_number %}<p><strong>Copy Number:</strong> {{ result.copy_number }}</p>{% endif %}
+{% if result.has_hybrid %}<p><strong>Hybrid Allele:</strong> Yes</p>{% endif %}
+<p><strong>Calling Method:</strong> {{ result.calling_method|default:"-" }}</p>
+{% if result.calling_confidence %}<p><strong>Confidence:</strong> {{ result.calling_confidence }}%</p>{% endif %}
+</div></div>
+{% if result.interpretation %}<div class="card mb-3"><div class="card-header">Interpretation</div><div class="card-body">{{ result.interpretation }}</div></div>{% endif %}
+{% if result.clinical_summary %}<div class="card mb-3"><div class="card-header">Clinical Summary</div><div class="card-body">{{ result.clinical_summary }}</div></div>{% endif %}
+</div>
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Drug Recommendations ({{ drug_results|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Drug</th><th>Action</th><th>Actionable</th></tr></thead>
+<tbody>{% for dr in drug_results %}<tr><td><a href="{% url 'pharmacogenomics:drug-detail' dr.drug.pk %}">{{ dr.drug.name }}</a></td><td><span class="badge bg-{% if dr.action == 'AVOID' %}danger{% elif dr.action == 'REDUCE' or dr.action == 'CAUTION' %}warning{% elif dr.action == 'ALTERNATIVE' %}info{% elif dr.action == 'MONITOR' %}primary{% else %}success{% endif %}">{{ dr.get_action_display }}</span></td><td>{% if dr.is_actionable %}<i class="fas fa-exclamation-circle text-warning"></i>{% endif %}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No drug recommendations.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% if clinical_summary %}
+<div class="card mb-3"><div class="card-header">Clinical Summary Report</div><div class="card-body">
+{% for item in clinical_summary %}<div class="mb-2">{{ item }}</div>{% endfor %}
+</div></div>
+{% endif %}
+<div class="card mb-3"><div class="card-header">Audit</div><div class="card-body">
+<p><strong>Called By:</strong> {{ result.called_by|default:"-" }}{% if result.called_at %} on {{ result.called_at|date:"Y-m-d H:i" }}{% endif %}</p>
+<p><strong>Reviewed By:</strong> {{ result.reviewed_by|default:"-" }}{% if result.reviewed_at %} on {{ result.reviewed_at|date:"Y-m-d H:i" }}{% endif %}</p>
+</div></div>
+</div>
+</div>
+{% endblock %}

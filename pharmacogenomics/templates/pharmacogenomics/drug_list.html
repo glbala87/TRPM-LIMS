@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Drug Database - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'pharmacogenomics:gene-dashboard' %}">Pharmacogenomics</a></li><li class="breadcrumb-item active">Drugs</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-pills me-2"></i>Drug Database</h2></div>
+{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Drug</th><th>Class</th><th>CPIC</th><th>FDA Label</th><th>Interactions</th><th>Actions</th></tr></thead>
+<tbody>{% for d in drugs %}<tr><td><a href="{% url 'pharmacogenomics:drug-detail' d.pk %}">{{ d.name }}</a></td><td>{{ d.get_drug_class_display }}</td><td>{% if d.has_cpic_guideline %}<span class="badge bg-success">{{ d.cpic_level|default:"Yes" }}</span>{% else %}-{% endif %}</td><td>{% if d.has_fda_label %}<i class="fas fa-check text-info"></i>{% endif %}</td><td>{{ d.gene_interactions.count }}</td><td><a href="{% url 'pharmacogenomics:drug-detail' d.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td></tr>{% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No drugs configured.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}
