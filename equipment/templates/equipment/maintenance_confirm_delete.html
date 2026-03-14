@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Maintenance Record - TRPM-LIMS{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'equipment:instrument_list' %}">Equipment</a></li>
+<li class="breadcrumb-item"><a href="{% url 'equipment:maintenance_list' %}">Maintenance</a></li>
+<li class="breadcrumb-item active">Delete</li>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header text-danger">Confirm Deletion</div>
+    <div class="card-body">
+        <p>Are you sure you want to delete the maintenance record for <strong>{{ object.instrument.name }}</strong> on {{ object.scheduled_date }}?</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Delete</button>
+            <a href="{% url 'equipment:maintenance_list' %}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

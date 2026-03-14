@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ indication.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'ontology:source_list' %}">Ontology</a></li><li class="breadcrumb-item"><a href="{% url 'ontology:indication_list' %}">Indications</a></li><li class="breadcrumb-item active">{{ indication.name }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ indication.name }}</h2>
+{% if indication.description %}<p class="text-muted">{{ indication.description }}</p>{% endif %}
+<div class="row">
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Linked Diseases ({{ diseases|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Code</th><th>Name</th></tr></thead>
+<tbody>{% for d in diseases %}<tr><td><a href="{% url 'ontology:disease_detail' d.pk %}"><code>{{ d.code }}</code></a></td><td>{{ d.name }}</td></tr>{% empty %}<tr><td colspan="2" class="text-center text-muted py-3">No linked diseases.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Test Panels ({{ test_panels|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Panel</th></tr></thead>
+<tbody>{% for p in test_panels %}<tr><td>{{ p.name }}</td></tr>{% empty %}<tr><td class="text-center text-muted py-3">No linked test panels.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+</div>
+{% endblock %}

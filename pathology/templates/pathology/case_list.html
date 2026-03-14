@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Pathology - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Pathology</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-microscope me-2"></i>Pathology Cases</h2>
+    <a href="{% url 'pathology:histology_list' %}" class="btn btn-outline-secondary"><i class="fas fa-layer-group me-1"></i>Histology</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Cases</span>
+        <form class="d-flex" method="get"><input type="text" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ request.GET.q }}"></form>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Accession #</th><th>Patient</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for case in cases %}
+                <tr>
+                    <td><a href="{% url 'pathology:case_detail' case.pk %}"><code>{{ case.accession_number }}</code></a></td>
+                    <td>{{ case.patient_name|default:"-" }}</td>
+                    <td>{{ case.pathology_type|default:"-" }}</td>
+                    <td><span class="badge bg-info">{{ case.status|default:"Pending" }}</span></td>
+                    <td>{{ case.created_at|date:"M d, Y" }}</td>
+                    <td><a href="{% url 'pathology:case_detail' case.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No pathology cases found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

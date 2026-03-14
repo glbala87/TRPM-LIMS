@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Antibiotics - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'microbiology:culture_list' %}">Microbiology</a></li>
+<li class="breadcrumb-item active">Antibiotics</li>
+{% endblock %}
+{% block page_header %}<h2 class="mb-4"><i class="fas fa-pills me-2"></i>Antibiotics</h2>{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Name</th><th>Class</th><th>Code</th></tr></thead>
+            <tbody>
+                {% for abx in antibiotics %}
+                <tr><td>{{ abx.name }}</td><td>{{ abx.antibiotic_class|default:"-" }}</td><td><code>{{ abx.code|default:"-" }}</code></td></tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted py-4">No antibiotics found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

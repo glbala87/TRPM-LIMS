@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'projects:project_list' %}">Projects</a></li><li class="breadcrumb-item active">{{ project.project_id }}</li>{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h2>{{ project.name }}</h2>
+<div class="d-flex gap-2">
+<a href="{% url 'projects:project_update' project.pk %}" class="btn btn-primary"><i class="fas fa-edit me-1"></i>Edit</a>
+<span class="badge bg-{% if project.status == 'ACTIVE' %}success{% elif project.status == 'DRAFT' %}secondary{% elif project.status == 'ON_HOLD' %}warning{% elif project.status == 'COMPLETED' %}info{% else %}dark{% endif %} fs-6 align-self-center">{{ project.get_status_display }}</span>
+</div>
+</div>
+<div class="row">
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Project Info</div><div class="card-body">
+<p><strong>ID:</strong> <code>{{ project.project_id }}</code></p>
+<p><strong>Category:</strong> {{ project.category|default:"-" }}</p>
+<p><strong>PI:</strong> {{ project.principal_investigator|default:"-" }}</p>
+<p><strong>Start:</strong> {{ project.start_date|date:"Y-m-d"|default:"-" }}</p>
+<p><strong>End:</strong> {{ project.end_date|date:"Y-m-d"|default:"-" }}</p>
+{% if project.description %}<p><strong>Description:</strong> {{ project.description }}</p>{% endif %}
+</div></div>
+<div class="card mb-3"><div class="card-header">Ethics & Compliance</div><div class="card-body">
+<p><strong>Ethics #:</strong> {{ project.ethics_approval_number|default:"-" }}</p>
+<p><strong>Ethics Expiry:</strong> {{ project.ethics_expiry_date|date:"Y-m-d"|default:"-" }}</p>
+<p><strong>Consent Required:</strong> {% if project.consent_required %}Yes{% else %}No{% endif %}</p>
+</div></div>
+<div class="card mb-3"><div class="card-header">Funding</div><div class="card-body">
+<p><strong>Source:</strong> {{ project.funding_source|default:"-" }}</p>
+<p><strong>Grant #:</strong> {{ project.grant_number|default:"-" }}</p>
+<p><strong>Budget:</strong> {% if project.budget %}${{ project.budget }}{% else %}-{% endif %}</p>
+</div></div>
+</div>
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">Members <a href="{% url 'projects:member_list' project.pk %}" class="btn btn-sm btn-outline-primary">View All</a></div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>User</th><th>Role</th></tr></thead>
+<tbody>{% for m in members %}<tr><td>{{ m.user }}</td><td>{{ m.get_role_display }}</td></tr>{% empty %}<tr><td colspan="2" class="text-center text-muted py-3">No members.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">Recent Samples <a href="{% url 'projects:sample_list' project.pk %}" class="btn btn-sm btn-outline-primary">View All</a></div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Sample</th><th>Subject</th></tr></thead>
+<tbody>{% for s in recent_samples %}<tr><td>{{ s.molecular_sample }}</td><td>{{ s.subject_id|default:"-" }}</td></tr>{% empty %}<tr><td colspan="2" class="text-center text-muted py-3">No samples.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">Milestones <a href="{% url 'projects:milestone_list' project.pk %}" class="btn btn-sm btn-outline-primary">View All</a></div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Milestone</th><th>Target</th><th>Status</th></tr></thead>
+<tbody>{% for m in milestones %}<tr><td>{{ m.name }}</td><td>{{ m.target_date|date:"Y-m-d" }}</td><td><span class="badge bg-{% if m.status == 'COMPLETED' %}success{% elif m.status == 'IN_PROGRESS' %}primary{% elif m.status == 'DELAYED' %}warning{% else %}secondary{% endif %}">{{ m.get_status_display }}</span></td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No milestones.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+</div>
+{% endblock %}

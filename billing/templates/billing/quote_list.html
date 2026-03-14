@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Quotations - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'billing:dashboard' %}">Billing</a></li><li class="breadcrumb-item active">Quotations</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-file-signature me-2"></i>Quotations</h2>
+    <a href="{% url 'billing:quote_create' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>New Quote</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Quote #</th><th>Client</th><th>Date</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody>{% for q in quotes %}<tr><td><a href="{% url 'billing:quote_detail' q.pk %}">{{ q.quote_number|default:q.pk }}</a></td><td>{{ q.client }}</td><td>{{ q.quote_date|date:"M d, Y" }}</td><td>${{ q.total_amount|floatformat:2 }}</td><td><span class="badge bg-info">{{ q.get_status_display|default:q.status }}</span></td><td><a href="{% url 'billing:quote_detail' q.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td></tr>{% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No quotations.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

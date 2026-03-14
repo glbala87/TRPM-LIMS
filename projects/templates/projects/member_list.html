@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Members - {{ project.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'projects:project_list' %}">Projects</a></li><li class="breadcrumb-item"><a href="{% url 'projects:project_detail' project.pk %}">{{ project.project_id }}</a></li><li class="breadcrumb-item active">Members</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-users me-2"></i>{{ project.name }} - Members</h2><a href="{% url 'projects:member_add' project.pk %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Member</a></div>
+{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>User</th><th>Role</th><th>Add Samples</th><th>Edit Samples</th><th>View Results</th><th>Manage Members</th></tr></thead>
+<tbody>{% for m in members %}<tr><td>{{ m.user }}</td><td>{{ m.get_role_display }}</td><td>{% if m.can_add_samples %}<i class="fas fa-check text-success"></i>{% endif %}</td><td>{% if m.can_edit_samples %}<i class="fas fa-check text-success"></i>{% endif %}</td><td>{% if m.can_view_results %}<i class="fas fa-check text-success"></i>{% endif %}</td><td>{% if m.can_manage_members %}<i class="fas fa-check text-success"></i>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No members.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

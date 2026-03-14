@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ disease.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'ontology:source_list' %}">Ontology</a></li><li class="breadcrumb-item"><a href="{% url 'ontology:disease_list' %}">Diseases</a></li><li class="breadcrumb-item active">{{ disease.code }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ disease.code }}: {{ disease.name }}</h2>
+<div class="row">
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Details</div><div class="card-body">
+<p><strong>Source:</strong> {{ disease.source }}</p>
+<p><strong>Full Code:</strong> <code>{{ disease.full_code }}</code></p>
+<p><strong>Parent:</strong> {% if disease.parent %}<a href="{% url 'ontology:disease_detail' disease.parent.pk %}">{{ disease.parent.name }}</a>{% else %}-{% endif %}</p>
+<p><strong>Hierarchy Level:</strong> {{ disease.hierarchy_level }}</p>
+<p><strong>Affected System:</strong> {{ disease.affected_system|default:"-" }}</p>
+{% if disease.description %}<p><strong>Description:</strong> {{ disease.description }}</p>{% endif %}
+{% if disease.clinical_significance %}<p><strong>Clinical Significance:</strong> {{ disease.clinical_significance }}</p>{% endif %}
+</div></div>
+</div>
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Child Terms ({{ children|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Code</th><th>Name</th></tr></thead>
+<tbody>{% for c in children %}<tr><td><a href="{% url 'ontology:disease_detail' c.pk %}"><code>{{ c.code }}</code></a></td><td>{{ c.name }}</td></tr>{% empty %}<tr><td colspan="2" class="text-center text-muted py-3">No child terms.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="card"><div class="card-header">Clinical Indications ({{ indications|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Indication</th></tr></thead>
+<tbody>{% for i in indications %}<tr><td><a href="{% url 'ontology:indication_detail' i.pk %}">{{ i.name }}</a></td></tr>{% empty %}<tr><td class="text-center text-muted py-3">No linked indications.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+</div>
+{% endblock %}

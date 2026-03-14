@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}AST Panels - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'microbiology:culture_list' %}">Microbiology</a></li>
+<li class="breadcrumb-item active">AST Panels</li>
+{% endblock %}
+{% block page_header %}<h2 class="mb-4"><i class="fas fa-th-list me-2"></i>AST Panels</h2>{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Panel Name</th><th>Description</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for panel in panels %}
+                <tr>
+                    <td><a href="{% url 'microbiology:panel_detail' panel.pk %}">{{ panel.name }}</a></td>
+                    <td>{{ panel.description|default:"-"|truncatewords:15 }}</td>
+                    <td><a href="{% url 'microbiology:panel_detail' panel.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted py-4">No AST panels defined.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

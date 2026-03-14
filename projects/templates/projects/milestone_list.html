@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Milestones - {{ project.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'projects:project_list' %}">Projects</a></li><li class="breadcrumb-item"><a href="{% url 'projects:project_detail' project.pk %}">{{ project.project_id }}</a></li><li class="breadcrumb-item active">Milestones</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-flag-checkered me-2"></i>{{ project.name }} - Milestones</h2><a href="{% url 'projects:milestone_add' project.pk %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Milestone</a></div>
+{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>#</th><th>Milestone</th><th>Target Date</th><th>Completed</th><th>Status</th></tr></thead>
+<tbody>{% for m in milestones %}<tr><td>{{ m.order }}</td><td>{{ m.name }}<br><small class="text-muted">{{ m.description|truncatewords:15 }}</small></td><td>{{ m.target_date|date:"Y-m-d" }}</td><td>{{ m.completed_date|date:"Y-m-d"|default:"-" }}</td><td><span class="badge bg-{% if m.status == 'COMPLETED' %}success{% elif m.status == 'IN_PROGRESS' %}primary{% elif m.status == 'DELAYED' %}warning{% elif m.status == 'CANCELLED' %}danger{% else %}secondary{% endif %}">{{ m.get_status_display }}</span></td></tr>{% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No milestones.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

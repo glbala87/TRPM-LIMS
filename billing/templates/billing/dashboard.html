@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Billing - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Billing</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-file-invoice-dollar me-2"></i>Billing Dashboard</h2>
+    <div>
+        <a href="{% url 'billing:invoice_create' %}" class="btn btn-primary me-1"><i class="fas fa-plus me-1"></i>New Invoice</a>
+        <a href="{% url 'billing:client_list' %}" class="btn btn-outline-secondary"><i class="fas fa-users me-1"></i>Clients</a>
+    </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4"><div class="card"><div class="card-body stat-card"><div class="stat-value">{{ pending_invoices }}</div><div class="stat-label">Pending Invoices</div></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body stat-card"><div class="stat-value text-danger">{{ overdue_invoices }}</div><div class="stat-label">Overdue Invoices</div></div></div></div>
+    <div class="col-md-4"><div class="card"><div class="card-body stat-card"><div class="stat-value">${{ total_outstanding|floatformat:2 }}</div><div class="stat-label">Total Outstanding</div></div></div></div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Recent Invoices</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Invoice</th><th>Client</th><th>Status</th><th>Amount</th></tr></thead>
+                    <tbody>
+                        {% for inv in recent_invoices %}
+                        <tr><td><a href="{% url 'billing:invoice_detail' inv.pk %}">{{ inv.invoice_number }}</a></td><td>{{ inv.client }}</td><td><span class="badge bg-info">{{ inv.get_status_display|default:inv.status }}</span></td><td>${{ inv.total_amount|floatformat:2 }}</td></tr>
+                        {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No invoices.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Recent Payments</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Invoice</th><th>Amount</th><th>Method</th><th>Date</th></tr></thead>
+                    <tbody>
+                        {% for pay in recent_payments %}
+                        <tr><td>{{ pay.invoice.invoice_number }}</td><td>${{ pay.amount|floatformat:2 }}</td><td>{{ pay.get_payment_method_display|default:pay.payment_method }}</td><td>{{ pay.payment_date|date:"M d" }}</td></tr>
+                        {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No payments.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

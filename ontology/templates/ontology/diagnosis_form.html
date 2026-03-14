@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Add Diagnosis - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'ontology:source_list' %}">Ontology</a></li><li class="breadcrumb-item"><a href="{% url 'ontology:diagnosis_list' %}">Diagnoses</a></li><li class="breadcrumb-item active">Add</li>{% endblock %}
+{% block content %}
+<div class="card"><div class="card-header">Add Patient Diagnosis</div><div class="card-body">
+<form method="post">{% csrf_token %}{% for field in form %}<div class="mb-3"><label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger">{{ error }}</div>{% endfor %}</div>{% endfor %}<div class="d-flex gap-2"><button type="submit" class="btn btn-primary">Save</button><a href="{% url 'ontology:diagnosis_list' %}" class="btn btn-secondary">Cancel</a></div></form>
+</div></div>
+{% endblock %}

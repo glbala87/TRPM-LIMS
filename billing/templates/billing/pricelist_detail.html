@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ price_list.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'billing:dashboard' %}">Billing</a></li><li class="breadcrumb-item"><a href="{% url 'billing:pricelist_list' %}">Price Lists</a></li><li class="breadcrumb-item active">{{ price_list.name }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ price_list.name }}</h2>
+<div class="card"><div class="card-header">Service Prices</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Service</th><th>Code</th><th>Price</th></tr></thead>
+<tbody>{% for p in prices %}<tr><td>{{ p.service_name }}</td><td><code>{{ p.service_code|default:"-" }}</code></td><td>${{ p.price|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No prices defined.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

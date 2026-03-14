@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ sample.sample_id }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'single_cell:sample_list' %}">Single Cell</a></li><li class="breadcrumb-item active">{{ sample.sample_id }}</li>{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h2>{{ sample.sample_id }} <span class="badge bg-{% if sample.status == 'ANALYZED' %}success{% elif sample.status == 'FAILED' %}danger{% elif sample.status == 'SEQUENCED' %}info{% else %}secondary{% endif %}">{{ sample.get_status_display }}</span></h2>
+<a href="{% url 'single_cell:sample_update' sample.pk %}" class="btn btn-primary"><i class="fas fa-edit me-1"></i>Edit</a>
+</div>
+<div class="row">
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Sample Info</div><div class="card-body">
+<p><strong>Molecular Sample:</strong> {{ sample.molecular_sample }}</p>
+<p><strong>Type:</strong> {{ sample.sample_type }}</p>
+<p><strong>Platform:</strong> {{ sample.get_platform_display }}</p>
+<p><strong>Nuclei:</strong> {% if sample.is_nuclei %}Yes{% else %}No{% endif %}</p>
+{% if sample.notes %}<p><strong>Notes:</strong> {{ sample.notes }}</p>{% endif %}
+</div></div>
+<div class="card mb-3"><div class="card-header">Cell Metrics</div><div class="card-body">
+<div class="row">
+<div class="col-6">
+<p><strong>Initial Count:</strong> {{ sample.initial_cell_count|default:"-" }}</p>
+<p><strong>Concentration:</strong> {{ sample.cell_concentration|default:"-" }}</p>
+<p><strong>Viability:</strong> {% if sample.viability_percent %}{{ sample.viability_percent }}%{% else %}-{% endif %}</p>
+<p><strong>Target Recovery:</strong> {{ sample.target_cell_recovery|default:"-" }}</p>
+</div>
+<div class="col-6">
+<p><strong>Actual Recovery:</strong> {{ sample.actual_cell_recovery|default:"-" }}</p>
+<p><strong>Chip ID:</strong> {{ sample.chip_id|default:"-" }}</p>
+<p><strong>Chip Position:</strong> {{ sample.chip_position|default:"-" }}</p>
+<p><strong>Capture Time:</strong> {{ sample.capture_time|date:"Y-m-d H:i"|default:"-" }}</p>
+</div>
+</div></div></div>
+<div class="card mb-3"><div class="card-header">Quality Metrics</div><div class="card-body">
+<p><strong>Mean Reads/Cell:</strong> {{ sample.mean_reads_per_cell|default:"-" }}</p>
+<p><strong>Median Genes/Cell:</strong> {{ sample.median_genes_per_cell|default:"-" }}</p>
+<p><strong>Median UMI/Cell:</strong> {{ sample.median_umi_per_cell|default:"-" }}</p>
+<p><strong>Sequencing Saturation:</strong> {% if sample.sequencing_saturation %}{{ sample.sequencing_saturation }}%{% else %}-{% endif %}</p>
+</div></div>
+</div>
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Libraries ({{ libraries|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Library</th><th>Type</th><th>Est. Cells</th></tr></thead>
+<tbody>{% for l in libraries %}<tr><td><a href="{% url 'single_cell:library_detail' l.pk %}">{{ l.ngs_library }}</a></td><td>{{ l.get_library_type_display }}</td><td>{{ l.estimated_cells|default:"-" }}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No libraries.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="card mb-3"><div class="card-header d-flex justify-content-between align-items-center">Cell Clusters ({{ clusters|length }}) <a href="{% url 'single_cell:cluster_list' sample.pk %}" class="btn btn-sm btn-outline-primary">View All</a></div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Cluster</th><th>Cell Type</th><th>Cells</th></tr></thead>
+<tbody>{% for c in clusters %}<tr><td>{{ c.cluster_id }}</td><td>{{ c.cell_type|default:"Unannotated" }}</td><td>{{ c.cell_count }}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No clusters.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+</div>
+{% endblock %}

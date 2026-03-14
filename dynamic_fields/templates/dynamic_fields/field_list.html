@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Custom Fields - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'dynamic_fields:category_list' %}">Dynamic Fields</a></li><li class="breadcrumb-item active">Fields</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-list-alt me-2"></i>Custom Fields</h2>
+    <a href="{% url 'dynamic_fields:field_create' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add Field</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Name</th><th>Code</th><th>Type</th><th>Model</th><th>Category</th><th>Required</th><th>Actions</th></tr></thead>
+<tbody>{% for f in fields %}<tr><td><a href="{% url 'dynamic_fields:field_detail' f.pk %}">{{ f.name }}</a></td><td><code>{{ f.code }}</code></td><td>{{ f.get_field_type_display|default:f.field_type }}</td><td>{{ f.content_type }}</td><td>{{ f.category|default:"-" }}</td><td>{% if f.is_required %}<i class="fas fa-check text-success"></i>{% endif %}</td><td><a href="{% url 'dynamic_fields:field_update' f.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No fields defined.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

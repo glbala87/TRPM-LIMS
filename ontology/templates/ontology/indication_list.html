@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Clinical Indications - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'ontology:source_list' %}">Ontology</a></li><li class="breadcrumb-item active">Indications</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-clipboard-list me-2"></i>Clinical Indications</h2></div>
+{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Name</th><th>Diseases</th><th>Test Panels</th></tr></thead>
+<tbody>{% for i in indications %}<tr><td><a href="{% url 'ontology:indication_detail' i.pk %}">{{ i.name }}</a></td><td>{{ i.diseases.count }}</td><td>{{ i.test_panels.count }}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-4">No clinical indications.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

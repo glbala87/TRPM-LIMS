@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Microbiology - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Microbiology</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-bacterium me-2"></i>Microbiology Cultures</h2>
+    <div>
+        <a href="{% url 'microbiology:organism_list' %}" class="btn btn-outline-secondary me-1"><i class="fas fa-bug me-1"></i>Organisms</a>
+        <a href="{% url 'microbiology:antibiotic_list' %}" class="btn btn-outline-secondary me-1"><i class="fas fa-pills me-1"></i>Antibiotics</a>
+        <a href="{% url 'microbiology:panel_list' %}" class="btn btn-outline-secondary"><i class="fas fa-th-list me-1"></i>AST Panels</a>
+    </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Cultures</span>
+        <form class="d-flex" method="get">
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ request.GET.q }}">
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Sample ID</th><th>Patient</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for culture in cultures %}
+                <tr>
+                    <td><a href="{% url 'microbiology:culture_detail' culture.pk %}"><code>{{ culture.sample_id }}</code></a></td>
+                    <td>{{ culture.patient_name|default:"-" }}</td>
+                    <td><span class="badge bg-info">{{ culture.status|default:"Pending" }}</span></td>
+                    <td>{{ culture.created_at|date:"M d, Y" }}</td>
+                    <td><a href="{% url 'microbiology:culture_detail' culture.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No cultures found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Sensor Dashboard - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Sensor Dashboard</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-tachometer-alt me-2"></i>Sensor Dashboard</h2>
+<div class="row mb-4">
+<div class="col-md-3"><div class="card text-white bg-danger"><div class="card-body text-center"><h3>{{ critical_alerts }}</h3><p class="mb-0">Critical Alerts</p></div></div></div>
+<div class="col-md-3"><div class="card text-white bg-warning"><div class="card-body text-center"><h3>{{ warning_alerts }}</h3><p class="mb-0">Warning Alerts</p></div></div></div>
+<div class="col-md-3"><div class="card bg-light"><div class="card-body text-center"><h3>{{ devices_in_alarm|length }}</h3><p class="mb-0">Active Devices</p></div></div></div>
+<div class="col-md-3"><div class="card bg-light"><div class="card-body text-center"><a href="{% url 'sensors:alert_list' %}" class="btn btn-outline-primary">View All Alerts</a><br><a href="{% url 'sensors:device_list' %}" class="btn btn-outline-secondary mt-2">View All Devices</a></div></div></div>
+</div>
+{% if active_alerts %}
+<div class="card mb-4 border-danger"><div class="card-header bg-danger text-white"><i class="fas fa-exclamation-triangle me-1"></i>Active Alerts</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Severity</th><th>Device</th><th>Message</th><th>Time</th><th>Actions</th></tr></thead>
+<tbody>{% for a in active_alerts %}<tr><td><span class="badge bg-{% if a.severity == 'CRITICAL' %}danger{% else %}warning{% endif %}">{{ a.get_severity_display }}</span></td><td><a href="{% url 'sensors:device_detail' a.device.pk %}">{{ a.device.name }}</a></td><td>{{ a.message|truncatewords:10 }}</td><td>{{ a.triggered_at|date:"Y-m-d H:i" }}</td><td><a href="{% url 'sensors:alert_detail' a.pk %}" class="btn btn-sm btn-outline-danger"><i class="fas fa-eye"></i></a></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endif %}
+<div class="card"><div class="card-header">Active Monitoring Devices</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Device</th><th>Type</th><th>Location</th><th>Last Value</th><th>Last Reading</th></tr></thead>
+<tbody>{% for d in devices_in_alarm %}<tr><td><a href="{% url 'sensors:device_detail' d.pk %}">{{ d.name }}</a></td><td>{{ d.sensor_type }}</td><td>{{ d.location_description|default:"-" }}</td><td>{% if d.last_reading_value %}{{ d.last_reading_value }} {{ d.sensor_type.unit }}{% else %}-{% endif %}</td><td>{{ d.last_reading|date:"Y-m-d H:i"|default:"-" }}</td></tr>{% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No active devices.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

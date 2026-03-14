@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ laboratory.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'tenants:organization_list' %}">Organizations</a></li><li class="breadcrumb-item"><a href="{% url 'tenants:laboratory_list' %}">Laboratories</a></li><li class="breadcrumb-item active">{{ laboratory.name }}</li>{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h2>{{ laboratory.name }}</h2>
+<a href="{% url 'tenants:switch_laboratory' laboratory.pk %}" class="btn btn-success"><i class="fas fa-exchange-alt me-1"></i>Switch to this Lab</a>
+</div>
+<div class="row">
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Laboratory Details</div><div class="card-body">
+<p><strong>Organization:</strong> <a href="{% url 'tenants:organization_detail' laboratory.organization.pk %}">{{ laboratory.organization.name }}</a></p>
+<p><strong>Code:</strong> <code>{{ laboratory.code }}</code></p>
+<p><strong>Type:</strong> {{ laboratory.get_lab_type_display }}</p>
+{% if laboratory.description %}<p><strong>Description:</strong> {{ laboratory.description }}</p>{% endif %}
+{% if laboratory.address %}<p><strong>Address:</strong> {{ laboratory.address }}</p>{% endif %}
+{% if laboratory.phone %}<p><strong>Phone:</strong> {{ laboratory.phone }}</p>{% endif %}
+{% if laboratory.email %}<p><strong>Email:</strong> {{ laboratory.email }}</p>{% endif %}
+<p><strong>Timezone:</strong> {{ laboratory.timezone }}</p>
+</div></div>
+<div class="card mb-3"><div class="card-header">Accreditation</div><div class="card-body">
+<p><strong>Number:</strong> {{ laboratory.accreditation_number|default:"-" }}</p>
+<p><strong>Body:</strong> {{ laboratory.accreditation_body|default:"-" }}</p>
+<p><strong>Expiry:</strong> {{ laboratory.accreditation_expiry|date:"Y-m-d"|default:"-" }}</p>
+</div></div>
+</div>
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Members ({{ members|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>User</th><th>Role</th><th>Department</th></tr></thead>
+<tbody>{% for m in members %}<tr><td>{{ m.user }}</td><td>{{ m.get_role_display }}</td><td>{{ m.department|default:"-" }}</td></tr>{% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No members.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+</div>
+{% endblock %}

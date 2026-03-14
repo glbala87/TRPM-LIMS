@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Cell Clusters - {{ sample.sample_id }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'single_cell:sample_list' %}">Single Cell</a></li><li class="breadcrumb-item"><a href="{% url 'single_cell:sample_detail' sample.pk %}">{{ sample.sample_id }}</a></li><li class="breadcrumb-item active">Clusters</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ sample.sample_id }} - Cell Clusters</h2>
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Cluster</th><th>Name</th><th>Cell Type</th><th>Cells</th><th>Mean Genes</th><th>Mean UMI</th></tr></thead>
+<tbody>{% for c in clusters %}<tr><td>{{ c.cluster_id }}</td><td>{{ c.cluster_name|default:"-" }}</td><td>{{ c.cell_type|default:"Unannotated" }}</td><td>{{ c.cell_count }}</td><td>{{ c.mean_genes|default:"-" }}</td><td>{{ c.mean_umi|default:"-" }}</td></tr>{% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No clusters identified.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

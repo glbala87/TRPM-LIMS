@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ pipeline.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'bioinformatics:pipeline_list' %}">Bioinformatics</a></li>
+<li class="breadcrumb-item active">{{ pipeline.name }}</li>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-project-diagram me-2"></i>{{ pipeline.name }}</h2>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">Pipeline Details</div>
+            <div class="card-body">
+                <p><strong>Version:</strong> {{ pipeline.version|default:"-" }}</p>
+                <p><strong>Description:</strong> {{ pipeline.description|default:"-" }}</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">Parameters</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Required</th></tr></thead>
+                    <tbody>
+                        {% for param in parameters %}
+                        <tr>
+                            <td>{{ param.name }}</td>
+                            <td><code>{{ param.parameter_type|default:"-" }}</code></td>
+                            <td>{{ param.default_value|default:"-" }}</td>
+                            <td>{% if param.is_required %}<i class="fas fa-check text-success"></i>{% else %}-{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted py-3">No parameters defined.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

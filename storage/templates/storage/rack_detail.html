@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Rack {{ rack }} - TRPM-LIMS{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'storage:unit_list' %}">Storage</a></li>
+<li class="breadcrumb-item"><a href="{% url 'storage:unit_detail' rack.unit.pk %}">{{ rack.unit.name }}</a></li>
+<li class="breadcrumb-item active">{{ rack.rack_id }}</li>
+{% endblock %}
+
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-th me-2"></i>Rack {{ rack.rack_id }}</h2>
+    <a href="{% url 'storage:rack_update' rack.pk %}" class="btn btn-primary"><i class="fas fa-edit me-1"></i>Edit</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Rack Info</div>
+            <div class="card-body">
+                <p><strong>Unit:</strong> <a href="{% url 'storage:unit_detail' rack.unit.pk %}">{{ rack.unit.name }}</a></p>
+                <p><strong>Rack ID:</strong> {{ rack.rack_id }}</p>
+                <p><strong>Name:</strong> {{ rack.name|default:"-" }}</p>
+                <p><strong>Shelf:</strong> {{ rack.shelf_number|default:"-" }}</p>
+                <p><strong>Type:</strong> {{ rack.rack_type|default:"-" }}</p>
+                <p><strong>Grid:</strong> {{ rack.rows }} rows x {{ rack.columns }} columns</p>
+                <p><strong>Total Positions:</strong> {{ rack.total_positions }}</p>
+                <p><strong>Occupied:</strong> {{ rack.occupied_positions }}</p>
+                <p><strong>Available:</strong> {{ rack.available_positions }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Positions</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>Status</th>
+                            <th>Stored At</th>
+                            <th>Stored By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pos in positions %}
+                        <tr>
+                            <td>{{ pos.position }}</td>
+                            <td>
+                                {% if pos.is_occupied %}
+                                <span class="badge bg-danger">Occupied</span>
+                                {% elif pos.is_reserved %}
+                                <span class="badge bg-warning text-dark">Reserved</span>
+                                {% else %}
+                                <span class="badge bg-success">Available</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ pos.stored_at|default:"-" }}</td>
+                            <td>{{ pos.stored_by|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted py-3">No positions created yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

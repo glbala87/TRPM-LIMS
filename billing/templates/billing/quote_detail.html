@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Quotation - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'billing:dashboard' %}">Billing</a></li><li class="breadcrumb-item"><a href="{% url 'billing:quote_list' %}">Quotations</a></li><li class="breadcrumb-item active">{{ quote.quote_number|default:quote.pk }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-file-signature me-2"></i>Quotation {{ quote.quote_number|default:quote.pk }}</h2>
+<div class="card"><div class="card-body">
+<p><strong>Client:</strong> {{ quote.client }}</p>
+<p><strong>Date:</strong> {{ quote.quote_date|date:"M d, Y" }}</p>
+<p><strong>Valid Until:</strong> {{ quote.valid_until|date:"M d, Y"|default:"-" }}</p>
+<p><strong>Status:</strong> <span class="badge bg-info">{{ quote.get_status_display|default:quote.status }}</span></p>
+<p><strong>Amount:</strong> ${{ quote.total_amount|floatformat:2 }}</p>
+{% if quote.notes %}<p><strong>Notes:</strong> {{ quote.notes }}</p>{% endif %}
+</div></div>
+{% endblock %}

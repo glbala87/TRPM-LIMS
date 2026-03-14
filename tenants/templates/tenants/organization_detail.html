@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ organization.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'tenants:organization_list' %}">Organizations</a></li><li class="breadcrumb-item active">{{ organization.name }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ organization.name }}</h2>
+<div class="row">
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Organization Details</div><div class="card-body">
+<p><strong>Code:</strong> <code>{{ organization.code }}</code></p>
+<p><strong>Tier:</strong> {{ organization.get_subscription_tier_display }}</p>
+{% if organization.description %}<p><strong>Description:</strong> {{ organization.description }}</p>{% endif %}
+{% if organization.address %}<p><strong>Address:</strong> {{ organization.address }}</p>{% endif %}
+{% if organization.city %}<p><strong>City:</strong> {{ organization.city }}{% if organization.state %}, {{ organization.state }}{% endif %}{% if organization.country %}, {{ organization.country }}{% endif %}</p>{% endif %}
+{% if organization.phone %}<p><strong>Phone:</strong> {{ organization.phone }}</p>{% endif %}
+{% if organization.email %}<p><strong>Email:</strong> {{ organization.email }}</p>{% endif %}
+{% if organization.website %}<p><strong>Website:</strong> <a href="{{ organization.website }}" target="_blank">{{ organization.website }}</a></p>{% endif %}
+</div></div>
+<div class="card mb-3"><div class="card-header">Limits</div><div class="card-body">
+<p><strong>Max Laboratories:</strong> {{ organization.max_laboratories }}</p>
+<p><strong>Max Users:</strong> {{ organization.max_users }}</p>
+<p><strong>Max Samples/Month:</strong> {{ organization.max_samples_per_month }}</p>
+</div></div>
+</div>
+<div class="col-md-6">
+<div class="card mb-3"><div class="card-header">Laboratories ({{ laboratories|length }})</div><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Actions</th></tr></thead>
+<tbody>{% for l in laboratories %}<tr><td><code>{{ l.code }}</code></td><td><a href="{% url 'tenants:laboratory_detail' l.pk %}">{{ l.name }}</a></td><td>{{ l.get_lab_type_display }}</td><td><a href="{% url 'tenants:switch_laboratory' l.pk %}" class="btn btn-sm btn-outline-success"><i class="fas fa-exchange-alt"></i> Switch</a></td></tr>{% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No laboratories.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+</div>
+</div>
+{% endblock %}

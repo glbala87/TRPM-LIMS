@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Sensor Alerts - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'sensors:dashboard' %}">Sensors</a></li><li class="breadcrumb-item active">Alerts</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-exclamation-triangle me-2"></i>Sensor Alerts</h2></div>
+{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+<form method="get" class="row g-2">
+<div class="col-md-4"><select name="status" class="form-select"><option value="">Active & Acknowledged</option><option value="ACTIVE" {% if request.GET.status == "ACTIVE" %}selected{% endif %}>Active</option><option value="ACKNOWLEDGED" {% if request.GET.status == "ACKNOWLEDGED" %}selected{% endif %}>Acknowledged</option><option value="RESOLVED" {% if request.GET.status == "RESOLVED" %}selected{% endif %}>Resolved</option></select></div>
+<div class="col-md-4"><select name="severity" class="form-select"><option value="">All Severities</option><option value="CRITICAL" {% if request.GET.severity == "CRITICAL" %}selected{% endif %}>Critical</option><option value="WARNING" {% if request.GET.severity == "WARNING" %}selected{% endif %}>Warning</option></select></div>
+<div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Filter</button></div>
+</form></div></div>
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Severity</th><th>Device</th><th>Message</th><th>Status</th><th>Triggered</th><th>Actions</th></tr></thead>
+<tbody>{% for a in alerts %}<tr><td><span class="badge bg-{% if a.severity == 'CRITICAL' %}danger{% else %}warning{% endif %}">{{ a.get_severity_display }}</span></td><td><a href="{% url 'sensors:device_detail' a.device.pk %}">{{ a.device.name }}</a></td><td>{{ a.message|truncatewords:15 }}</td><td><span class="badge bg-{% if a.status == 'ACTIVE' %}danger{% elif a.status == 'ACKNOWLEDGED' %}info{% else %}success{% endif %}">{{ a.get_status_display }}</span></td><td>{{ a.triggered_at|date:"Y-m-d H:i" }}</td><td><a href="{% url 'sensors:alert_detail' a.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td></tr>{% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No alerts.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% if is_paginated %}
+<nav class="mt-3"><ul class="pagination justify-content-center">
+{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+<li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Notifications - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'messaging:inbox' %}">Messaging</a></li>
+<li class="breadcrumb-item active">Notifications</li>
+{% endblock %}
+{% block page_header %}<h2 class="mb-4"><i class="fas fa-bell me-2"></i>Notifications</h2>{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Notification</th><th>Type</th><th>Time</th><th>Read</th></tr></thead>
+            <tbody>
+                {% for notif in notifications %}
+                <tr class="{% if not notif.is_read %}fw-bold{% endif %}">
+                    <td>{{ notif.message }}</td>
+                    <td><span class="badge bg-info">{{ notif.notification_type|default:"General" }}</span></td>
+                    <td>{{ notif.created_at|timesince }} ago</td>
+                    <td>{% if notif.is_read %}<i class="fas fa-check text-success"></i>{% else %}<i class="fas fa-circle text-primary" style="font-size:0.5rem"></i>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted py-4">No notifications.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Storage Units - TRPM-LIMS{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Storage</li>
+{% endblock %}
+
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-warehouse me-2"></i>Storage Units</h2>
+    <div>
+        <a href="{% url 'storage:log_list' %}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-history me-1"></i>Storage Log
+        </a>
+        <a href="{% url 'storage:unit_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Add Unit
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Units</span>
+        <form class="d-flex" method="get">
+            <select name="type" class="form-select form-select-sm me-2" onchange="this.form.submit()">
+                <option value="">All Types</option>
+                {% for value, label in type_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select name="status" class="form-select form-select-sm me-2" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="Search...">
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Location</th>
+                    <th>Temperature</th>
+                    <th>Status</th>
+                    <th>Capacity</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for unit in units %}
+                <tr>
+                    <td><code>{{ unit.code }}</code></td>
+                    <td><a href="{% url 'storage:unit_detail' unit.pk %}">{{ unit.name }}</a></td>
+                    <td>{{ unit.get_unit_type_display }}</td>
+                    <td>{{ unit.location|default:"-" }}</td>
+                    <td>{% if unit.temperature_range %}{{ unit.temperature_range }}{% else %}-{% endif %}</td>
+                    <td>
+                        <span class="badge {% if unit.status == 'ACTIVE' %}bg-success{% elif unit.status == 'FULL' %}bg-warning text-dark{% elif unit.status == 'MAINTENANCE' %}bg-info{% else %}bg-danger{% endif %}">
+                            {{ unit.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ unit.capacity_description|default:"-" }}</td>
+                    <td>
+                        <a href="{% url 'storage:unit_update' unit.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-4">No storage units found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

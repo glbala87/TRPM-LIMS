@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Inbox - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Messaging</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-envelope me-2"></i>Inbox</h2>
+    <a href="{% url 'messaging:notification_list' %}" class="btn btn-outline-secondary"><i class="fas fa-bell me-1"></i>Notifications</a>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Subject</th><th>Participants</th><th>Last Updated</th></tr></thead>
+            <tbody>
+                {% for thread in threads %}
+                <tr>
+                    <td><a href="{% url 'messaging:thread_detail' thread.pk %}">{{ thread.subject|default:"(No Subject)" }}</a></td>
+                    <td>{% for p in thread.participants.all %}{{ p.get_full_name|default:p.username }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                    <td>{{ thread.updated_at|timesince }} ago</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted py-4">No messages.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

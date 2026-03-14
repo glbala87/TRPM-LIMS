@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Organisms - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'ontology:source_list' %}">Ontology</a></li><li class="breadcrumb-item active">Organisms</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-bacterium me-2"></i>Organisms</h2></div>
+{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+<form method="get" class="row g-2">
+<div class="col-auto">
+<select name="type" class="form-select"><option value="">All Types</option><option value="host" {% if request.GET.type == "host" %}selected{% endif %}>Hosts</option><option value="pathogen" {% if request.GET.type == "pathogen" %}selected{% endif %}>Pathogens</option></select>
+</div>
+<div class="col-auto"><button type="submit" class="btn btn-primary">Filter</button></div>
+</form></div></div>
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Scientific Name</th><th>Common Name</th><th>NCBI ID</th><th>Host</th><th>Pathogen</th></tr></thead>
+<tbody>{% for o in organisms %}<tr><td><em>{{ o.scientific_name }}</em></td><td>{{ o.common_name|default:"-" }}</td><td>{{ o.ncbi_taxonomy_id|default:"-" }}</td><td>{% if o.is_host %}<i class="fas fa-check text-success"></i>{% endif %}</td><td>{% if o.is_pathogen %}<i class="fas fa-check text-danger"></i>{% endif %}</td></tr>{% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No organisms.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

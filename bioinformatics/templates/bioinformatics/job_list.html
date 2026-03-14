@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Analysis Jobs - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'bioinformatics:pipeline_list' %}">Bioinformatics</a></li>
+<li class="breadcrumb-item active">Jobs</li>
+{% endblock %}
+{% block page_header %}<h2 class="mb-4"><i class="fas fa-tasks me-2"></i>Analysis Jobs</h2>{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Job</th><th>Service</th><th>Sample</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for job in jobs %}
+                <tr>
+                    <td><a href="{% url 'bioinformatics:job_detail' job.pk %}">{{ job }}</a></td>
+                    <td>{{ job.service|default:"-" }}</td>
+                    <td>{{ job.sample|default:"-" }}</td>
+                    <td><span class="badge bg-info">{{ job.get_status_display|default:job.status }}</span></td>
+                    <td>{{ job.created_at|date:"M d, Y" }}</td>
+                    <td><a href="{% url 'bioinformatics:job_detail' job.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">No analysis jobs found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

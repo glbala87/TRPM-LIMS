@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Culture {{ culture.sample_id }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'microbiology:culture_list' %}">Microbiology</a></li>
+<li class="breadcrumb-item active">{{ culture.sample_id }}</li>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-bacterium me-2"></i>Culture: {{ culture.sample_id }}</h2>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Organism Results</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Organism</th><th>Colony Count</th><th>Significance</th></tr></thead>
+                    <tbody>
+                        {% for result in organism_results %}
+                        <tr>
+                            <td><em>{{ result.organism.name }}</em></td>
+                            <td>{{ result.colony_count|default:"-" }}</td>
+                            <td>{{ result.significance|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">No organisms identified.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Antibiotic Susceptibility</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Antibiotic</th><th>Result</th><th>MIC</th></tr></thead>
+                    <tbody>
+                        {% for ast in ast_results %}
+                        <tr>
+                            <td>{{ ast.antibiotic.name }}</td>
+                            <td><span class="badge {% if ast.interpretation == 'S' %}bg-success{% elif ast.interpretation == 'R' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ ast.interpretation|default:"-" }}</span></td>
+                            <td>{{ ast.mic_value|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted py-3">No AST results.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

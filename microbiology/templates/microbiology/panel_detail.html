@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ panel.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'microbiology:culture_list' %}">Microbiology</a></li>
+<li class="breadcrumb-item"><a href="{% url 'microbiology:panel_list' %}">AST Panels</a></li>
+<li class="breadcrumb-item active">{{ panel.name }}</li>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-th-list me-2"></i>{{ panel.name }}</h2>
+<div class="card">
+    <div class="card-header">Panel Details</div>
+    <div class="card-body">
+        <p><strong>Description:</strong> {{ panel.description|default:"-" }}</p>
+    </div>
+</div>
+{% endblock %}

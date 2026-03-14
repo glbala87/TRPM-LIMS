@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance Record - TRPM-LIMS{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'equipment:instrument_list' %}">Equipment</a></li>
+<li class="breadcrumb-item"><a href="{% url 'equipment:maintenance_list' %}">Maintenance</a></li>
+<li class="breadcrumb-item active">{{ record.instrument.name }} - {{ record.scheduled_date }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-wrench me-2"></i>{{ record.get_maintenance_type_display }}</h2>
+    <a href="{% url 'equipment:maintenance_update' record.pk %}" class="btn btn-primary"><i class="fas fa-edit me-1"></i>Edit</a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">Details</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Instrument:</strong> <a href="{% url 'equipment:instrument_detail' record.instrument.pk %}">{{ record.instrument.name }}</a></p>
+                        <p><strong>Type:</strong> {{ record.get_maintenance_type_display }}</p>
+                        <p><strong>Status:</strong> <span class="badge {% if record.status == 'COMPLETED' %}bg-success{% elif record.status == 'FAILED' %}bg-danger{% else %}bg-info{% endif %}">{{ record.get_status_display }}</span></p>
+                        <p><strong>Passed:</strong> {% if record.passed is not None %}{% if record.passed %}Yes{% else %}No{% endif %}{% else %}-{% endif %}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Scheduled:</strong> {{ record.scheduled_date }}</p>
+                        <p><strong>Performed:</strong> {{ record.performed_at|default:"-" }}</p>
+                        <p><strong>Completed:</strong> {{ record.completed_at|default:"-" }}</p>
+                        <p><strong>Next Due:</strong> {{ record.next_due|default:"-" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if record.description or record.findings or record.actions_taken %}
+        <div class="card mb-4">
+            <div class="card-header">Work Details</div>
+            <div class="card-body">
+                {% if record.description %}<p><strong>Description:</strong><br>{{ record.description }}</p>{% endif %}
+                {% if record.findings %}<p><strong>Findings:</strong><br>{{ record.findings }}</p>{% endif %}
+                {% if record.actions_taken %}<p><strong>Actions Taken:</strong><br>{{ record.actions_taken }}</p>{% endif %}
+                {% if record.parts_replaced %}<p><strong>Parts Replaced:</strong><br>{{ record.parts_replaced }}</p>{% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Service Info</div>
+            <div class="card-body">
+                <p><strong>Performed By:</strong> {{ record.performed_by|default:"-" }}</p>
+                <p><strong>Service Provider:</strong> {{ record.service_provider|default:"-" }}</p>
+                <p><strong>Cost:</strong> {% if record.cost %}${{ record.cost }}{% else %}-{% endif %}</p>
+                <p><strong>Certificate #:</strong> {{ record.certificate_number|default:"-" }}</p>
+                {% if record.certificate %}
+                <p><strong>Certificate:</strong> <a href="{{ record.certificate.url }}">Download</a></p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

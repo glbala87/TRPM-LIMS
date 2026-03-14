@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Invoice {{ invoice.invoice_number }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'billing:dashboard' %}">Billing</a></li><li class="breadcrumb-item"><a href="{% url 'billing:invoice_list' %}">Invoices</a></li><li class="breadcrumb-item active">{{ invoice.invoice_number }}</li>{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-file-invoice me-2"></i>{{ invoice.invoice_number }}</h2>
+    <div><a href="{% url 'billing:invoice_update' invoice.pk %}" class="btn btn-primary me-1"><i class="fas fa-edit me-1"></i>Edit</a><a href="{% url 'billing:payment_create' invoice.pk %}" class="btn btn-success"><i class="fas fa-money-bill me-1"></i>Record Payment</a></div>
+</div>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4"><div class="card-header">Invoice Items</div><div class="card-body p-0">
+        <table class="table table-hover mb-0"><thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>{% for item in items %}<tr><td>{{ item.description }}</td><td>{{ item.quantity }}</td><td>${{ item.unit_price|floatformat:2 }}</td><td>${{ item.total_price|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No items.</td></tr>{% endfor %}</tbody></table>
+        </div></div>
+        <div class="card"><div class="card-header">Payments</div><div class="card-body p-0">
+        <table class="table table-hover mb-0"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead><tbody>{% for pay in payments %}<tr><td>{{ pay.payment_date|date:"M d, Y" }}</td><td>${{ pay.amount|floatformat:2 }}</td><td>{{ pay.get_payment_method_display|default:pay.payment_method }}</td><td>{{ pay.reference_number|default:"-" }}</td></tr>{% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No payments recorded.</td></tr>{% endfor %}</tbody></table>
+        </div></div>
+    </div>
+    <div class="col-md-4"><div class="card"><div class="card-header">Summary</div><div class="card-body">
+        <p><strong>Client:</strong> <a href="{% url 'billing:client_detail' invoice.client.pk %}">{{ invoice.client }}</a></p>
+        <p><strong>Status:</strong> <span class="badge {% if invoice.status == 'PAID' %}bg-success{% elif invoice.status == 'OVERDUE' %}bg-danger{% else %}bg-info{% endif %}">{{ invoice.get_status_display|default:invoice.status }}</span></p>
+        <p><strong>Date:</strong> {{ invoice.invoice_date|date:"M d, Y" }}</p>
+        <p><strong>Due:</strong> {{ invoice.due_date|date:"M d, Y" }}</p>
+        <hr><p><strong>Subtotal:</strong> ${{ invoice.subtotal|floatformat:2 }}</p>
+        <p><strong>Tax:</strong> ${{ invoice.tax_amount|floatformat:2 }}</p>
+        <p class="fs-5"><strong>Total:</strong> ${{ invoice.total_amount|floatformat:2 }}</p>
+        <p><strong>Balance Due:</strong> <span class="text-danger fw-bold">${{ invoice.balance_due|floatformat:2 }}</span></p>
+    </div></div></div>
+</div>
+{% endblock %}

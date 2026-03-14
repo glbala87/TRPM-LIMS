@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Price Lists - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'billing:dashboard' %}">Billing</a></li><li class="breadcrumb-item active">Price Lists</li>{% endblock %}
+{% block page_header %}<h2 class="mb-4"><i class="fas fa-tags me-2"></i>Price Lists</h2>{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Name</th><th>Effective From</th><th>Default</th><th>Actions</th></tr></thead>
+<tbody>{% for pl in price_lists %}<tr><td><a href="{% url 'billing:pricelist_detail' pl.pk %}">{{ pl.name }}</a></td><td>{{ pl.effective_from|date:"M d, Y" }}</td><td>{% if pl.is_default %}<i class="fas fa-check text-success"></i>{% endif %}</td><td><a href="{% url 'billing:pricelist_detail' pl.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td></tr>{% empty %}<tr><td colspan="4" class="text-center text-muted py-4">No price lists.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

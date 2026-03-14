@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Maintenance Records - TRPM-LIMS{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'equipment:instrument_list' %}">Equipment</a></li>
+<li class="breadcrumb-item active">Maintenance</li>
+{% endblock %}
+
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-wrench me-2"></i>Maintenance Records</h2>
+    <a href="{% url 'equipment:maintenance_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>Schedule Maintenance
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Records</span>
+        <form class="d-flex" method="get">
+            <select name="status" class="form-select form-select-sm me-2" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select name="type" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All Types</option>
+                {% for value, label in type_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Instrument</th>
+                    <th>Type</th>
+                    <th>Scheduled Date</th>
+                    <th>Status</th>
+                    <th>Performed By</th>
+                    <th>Passed</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td><a href="{% url 'equipment:instrument_detail' record.instrument.pk %}">{{ record.instrument.name }}</a></td>
+                    <td>{{ record.get_maintenance_type_display }}</td>
+                    <td>{{ record.scheduled_date }}</td>
+                    <td><span class="badge {% if record.status == 'COMPLETED' %}bg-success{% elif record.status == 'SCHEDULED' %}bg-info{% elif record.status == 'IN_PROGRESS' %}bg-warning text-dark{% elif record.status == 'FAILED' %}bg-danger{% else %}bg-secondary{% endif %}">{{ record.get_status_display }}</span></td>
+                    <td>{{ record.performed_by|default:"-" }}</td>
+                    <td>{% if record.passed is not None %}{% if record.passed %}<i class="fas fa-check text-success"></i>{% else %}<i class="fas fa-times text-danger"></i>{% endif %}{% else %}-{% endif %}</td>
+                    <td>
+                        <a href="{% url 'equipment:maintenance_detail' record.pk %}" class="btn btn-sm btn-outline-primary me-1"><i class="fas fa-eye"></i></a>
+                        <a href="{% url 'equipment:maintenance_update' record.pk %}" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No maintenance records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

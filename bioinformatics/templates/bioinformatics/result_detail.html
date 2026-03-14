@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Result - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'bioinformatics:pipeline_list' %}">Bioinformatics</a></li>
+<li class="breadcrumb-item"><a href="{% url 'bioinformatics:job_list' %}">Jobs</a></li>
+<li class="breadcrumb-item active">Result</li>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-chart-bar me-2"></i>Analysis Result</h2>
+<div class="card">
+    <div class="card-header">Result Details</div>
+    <div class="card-body">
+        <p><strong>Job:</strong> {{ result.job|default:"-" }}</p>
+        <p><strong>Type:</strong> {{ result.result_type|default:"-" }}</p>
+        <p><strong>Status:</strong> {{ result.status|default:"-" }}</p>
+        {% if result.file %}<p><strong>File:</strong> <a href="{{ result.file.url }}">Download</a></p>{% endif %}
+        {% if result.summary %}<p><strong>Summary:</strong><br>{{ result.summary }}</p>{% endif %}
+    </div>
+</div>
+{% endblock %}

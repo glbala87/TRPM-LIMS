@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Documents - {{ project.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'projects:project_list' %}">Projects</a></li><li class="breadcrumb-item"><a href="{% url 'projects:project_detail' project.pk %}">{{ project.project_id }}</a></li><li class="breadcrumb-item active">Documents</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-file-alt me-2"></i>{{ project.name }} - Documents</h2><a href="{% url 'projects:document_upload' project.pk %}" class="btn btn-primary"><i class="fas fa-upload me-1"></i>Upload Document</a></div>
+{% endblock %}
+{% block content %}
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Title</th><th>Type</th><th>Version</th><th>Uploaded</th><th>By</th></tr></thead>
+<tbody>{% for d in documents %}<tr><td><a href="{{ d.file.url }}">{{ d.title }}</a></td><td>{{ d.get_document_type_display }}</td><td>{{ d.version|default:"-" }}</td><td>{{ d.uploaded_at|date:"Y-m-d" }}</td><td>{{ d.uploaded_by|default:"-" }}</td></tr>{% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No documents.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

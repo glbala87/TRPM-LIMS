@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Single-Cell Samples - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Single-Cell Samples</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-microscope me-2"></i>Single-Cell Samples</h2><a href="{% url 'single_cell:sample_create' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>New Sample</a></div>
+{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+<form method="get" class="row g-2">
+<div class="col-md-5"><select name="status" class="form-select"><option value="">All Statuses</option><option value="RECEIVED" {% if request.GET.status == "RECEIVED" %}selected{% endif %}>Received</option><option value="DISSOCIATED" {% if request.GET.status == "DISSOCIATED" %}selected{% endif %}>Dissociated</option><option value="LOADED" {% if request.GET.status == "LOADED" %}selected{% endif %}>Loaded</option><option value="CAPTURED" {% if request.GET.status == "CAPTURED" %}selected{% endif %}>Captured</option><option value="SEQUENCED" {% if request.GET.status == "SEQUENCED" %}selected{% endif %}>Sequenced</option><option value="ANALYZED" {% if request.GET.status == "ANALYZED" %}selected{% endif %}>Analyzed</option><option value="FAILED" {% if request.GET.status == "FAILED" %}selected{% endif %}>Failed</option></select></div>
+<div class="col-md-5"><select name="platform" class="form-select"><option value="">All Platforms</option><option value="10X_3PRIME" {% if request.GET.platform == "10X_3PRIME" %}selected{% endif %}>10x 3' GEX</option><option value="10X_5PRIME" {% if request.GET.platform == "10X_5PRIME" %}selected{% endif %}>10x 5' GEX</option><option value="10X_MULTIOME" {% if request.GET.platform == "10X_MULTIOME" %}selected{% endif %}>10x Multiome</option><option value="SMART_SEQ2" {% if request.GET.platform == "SMART_SEQ2" %}selected{% endif %}>Smart-seq2</option></select></div>
+<div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Filter</button></div>
+</form></div></div>
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Sample ID</th><th>Type</th><th>Platform</th><th>Status</th><th>Cells</th><th>Viability</th><th>Actions</th></tr></thead>
+<tbody>{% for s in samples %}<tr><td><a href="{% url 'single_cell:sample_detail' s.pk %}">{{ s.sample_id }}</a></td><td>{{ s.sample_type }}</td><td>{{ s.get_platform_display }}</td><td><span class="badge bg-{% if s.status == 'ANALYZED' %}success{% elif s.status == 'FAILED' %}danger{% elif s.status == 'SEQUENCED' %}info{% else %}secondary{% endif %}">{{ s.get_status_display }}</span></td><td>{{ s.initial_cell_count|default:"-" }}</td><td>{% if s.viability_percent %}{{ s.viability_percent }}%{% else %}-{% endif %}</td><td><a href="{% url 'single_cell:sample_detail' s.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No samples.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% if is_paginated %}
+<nav class="mt-3"><ul class="pagination justify-content-center">
+{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ request.GET.status|default:'' }}&platform={{ request.GET.platform|default:'' }}">Previous</a></li>{% endif %}
+<li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ request.GET.status|default:'' }}&platform={{ request.GET.platform|default:'' }}">Next</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

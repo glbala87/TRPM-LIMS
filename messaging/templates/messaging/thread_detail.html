@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ thread.subject|default:"Thread" }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'messaging:inbox' %}">Inbox</a></li>
+<li class="breadcrumb-item active">{{ thread.subject|default:"Thread" }}</li>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header"><strong>{{ thread.subject|default:"(No Subject)" }}</strong></div>
+    <div class="card-body">
+        {% for msg in messages_list %}
+        <div class="border-bottom pb-3 mb-3">
+            <div class="d-flex justify-content-between">
+                <strong>{{ msg.sender.get_full_name|default:msg.sender.username }}</strong>
+                <small class="text-muted">{{ msg.created_at }}</small>
+            </div>
+            <p class="mt-2 mb-0">{{ msg.body }}</p>
+        </div>
+        {% empty %}
+        <p class="text-muted">No messages in this thread.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

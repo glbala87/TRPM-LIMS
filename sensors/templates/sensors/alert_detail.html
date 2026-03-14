@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Alert - {{ alert.device.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'sensors:dashboard' %}">Sensors</a></li><li class="breadcrumb-item"><a href="{% url 'sensors:alert_list' %}">Alerts</a></li><li class="breadcrumb-item active">Alert #{{ alert.pk }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">Alert: {{ alert.device.name }} <span class="badge bg-{% if alert.severity == 'CRITICAL' %}danger{% else %}warning{% endif %}">{{ alert.get_severity_display }}</span> <span class="badge bg-{% if alert.status == 'ACTIVE' %}danger{% elif alert.status == 'ACKNOWLEDGED' %}info{% else %}success{% endif %}">{{ alert.get_status_display }}</span></h2>
+<div class="row">
+<div class="col-md-8">
+<div class="card mb-3"><div class="card-header">Alert Details</div><div class="card-body">
+<p><strong>Device:</strong> <a href="{% url 'sensors:device_detail' alert.device.pk %}">{{ alert.device.name }}</a></p>
+<p><strong>Message:</strong> {{ alert.message }}</p>
+<p><strong>Triggered:</strong> {{ alert.triggered_at|date:"Y-m-d H:i:s" }}</p>
+{% if alert.acknowledged_by %}<p><strong>Acknowledged:</strong> {{ alert.acknowledged_at|date:"Y-m-d H:i:s" }} by {{ alert.acknowledged_by }}</p>{% endif %}
+{% if alert.resolved_by %}<p><strong>Resolved:</strong> {{ alert.resolved_at|date:"Y-m-d H:i:s" }} by {{ alert.resolved_by }}</p>{% if alert.resolution_notes %}<p><strong>Resolution Notes:</strong> {{ alert.resolution_notes }}</p>{% endif %}{% endif %}
+</div></div>
+</div>
+<div class="col-md-4">
+{% if alert.status == 'ACTIVE' %}
+<div class="card mb-3"><div class="card-header">Actions</div><div class="card-body">
+<form method="post" action="{% url 'sensors:alert_acknowledge' alert.pk %}">{% csrf_token %}<button type="submit" class="btn btn-info w-100 mb-2"><i class="fas fa-check me-1"></i>Acknowledge</button></form>
+<form method="post" action="{% url 'sensors:alert_resolve' alert.pk %}">{% csrf_token %}<div class="mb-2"><textarea name="notes" class="form-control" rows="2" placeholder="Resolution notes..."></textarea></div><button type="submit" class="btn btn-success w-100"><i class="fas fa-check-double me-1"></i>Resolve</button></form>
+</div></div>
+{% elif alert.status == 'ACKNOWLEDGED' %}
+<div class="card mb-3"><div class="card-header">Actions</div><div class="card-body">
+<form method="post" action="{% url 'sensors:alert_resolve' alert.pk %}">{% csrf_token %}<div class="mb-2"><textarea name="notes" class="form-control" rows="2" placeholder="Resolution notes..."></textarea></div><button type="submit" class="btn btn-success w-100"><i class="fas fa-check-double me-1"></i>Resolve</button></form>
+</div></div>
+{% endif %}
+</div>
+</div>
+{% endblock %}

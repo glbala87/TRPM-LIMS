@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Monitoring Devices - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'sensors:dashboard' %}">Sensors</a></li><li class="breadcrumb-item active">Devices</li>{% endblock %}
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4"><h2><i class="fas fa-thermometer-half me-2"></i>Monitoring Devices</h2></div>
+{% endblock %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+<form method="get" class="row g-2">
+<div class="col-md-5"><select name="status" class="form-select"><option value="">All Statuses</option><option value="AVAILABLE" {% if request.GET.status == "AVAILABLE" %}selected{% endif %}>Available</option><option value="ACTIVE" {% if request.GET.status == "ACTIVE" %}selected{% endif %}>Active</option><option value="MAINTENANCE" {% if request.GET.status == "MAINTENANCE" %}selected{% endif %}>Maintenance</option><option value="RETIRED" {% if request.GET.status == "RETIRED" %}selected{% endif %}>Retired</option></select></div>
+<div class="col-md-5"><select name="type" class="form-select"><option value="">All Types</option></select></div>
+<div class="col-md-2"><button type="submit" class="btn btn-primary w-100">Filter</button></div>
+</form></div></div>
+<div class="card"><div class="card-body p-0">
+<table class="table table-hover mb-0">
+<thead><tr><th>Name</th><th>Device ID</th><th>Type</th><th>Location</th><th>Status</th><th>Last Reading</th><th>Actions</th></tr></thead>
+<tbody>{% for d in devices %}<tr><td><a href="{% url 'sensors:device_detail' d.pk %}">{{ d.name }}</a></td><td><code>{{ d.device_id }}</code></td><td>{{ d.sensor_type }}</td><td>{{ d.location_description|default:d.storage_unit|default:"-" }}</td><td><span class="badge bg-{% if d.status == 'ACTIVE' %}success{% elif d.status == 'MAINTENANCE' %}warning{% elif d.status == 'RETIRED' %}danger{% else %}secondary{% endif %}">{{ d.get_status_display }}</span></td><td>{% if d.last_reading_value %}{{ d.last_reading_value }} {{ d.sensor_type.unit }}{% else %}-{% endif %}</td><td><a href="{% url 'sensors:device_readings' d.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-chart-line"></i></a></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No devices.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

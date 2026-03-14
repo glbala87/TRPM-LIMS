@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ document.title }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'qms:document_list' %}">QMS</a></li>
+<li class="breadcrumb-item active">{{ document.title }}</li>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-file-alt me-2"></i>{{ document.title }}</h2>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">Document Details</div>
+            <div class="card-body">
+                <p><strong>Document #:</strong> <code>{{ document.document_number|default:"-" }}</code></p>
+                <p><strong>Category:</strong> {{ document.category|default:"-" }}</p>
+                <p><strong>Status:</strong> {{ document.status|default:"-" }}</p>
+                <p><strong>Author:</strong> {{ document.author|default:"-" }}</p>
+            </div>
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">Version History</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead><tr><th>Version</th><th>Date</th><th>Author</th><th>Notes</th></tr></thead>
+                    <tbody>
+                        {% for ver in versions %}
+                        <tr>
+                            <td>v{{ ver.version_number }}</td>
+                            <td>{{ ver.created_at|date:"M d, Y" }}</td>
+                            <td>{{ ver.author|default:"-" }}</td>
+                            <td>{{ ver.change_notes|default:"-"|truncatewords:10 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted py-3">No versions.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Review Cycles</div>
+            <div class="card-body">
+                {% for cycle in review_cycles %}
+                <div class="border-bottom pb-2 mb-2">
+                    <strong>{{ cycle.created_at|date:"M d, Y" }}</strong>
+                    <p class="mb-0"><span class="badge bg-info">{{ cycle.status|default:"Open" }}</span></p>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No review cycles.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

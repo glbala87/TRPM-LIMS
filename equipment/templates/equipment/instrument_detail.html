@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}{{ instrument.name }} - TRPM-LIMS{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'equipment:instrument_list' %}">Equipment</a></li>
+<li class="breadcrumb-item active">{{ instrument.name }}</li>
+{% endblock %}
+
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-microscope me-2"></i>{{ instrument.name }}</h2>
+    <div>
+        <a href="{% url 'equipment:instrument_update' instrument.pk %}" class="btn btn-primary me-1">
+            <i class="fas fa-edit me-1"></i>Edit
+        </a>
+        <a href="{% url 'equipment:maintenance_create' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-wrench me-1"></i>Schedule Maintenance
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">Instrument Details</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Type:</strong> {{ instrument.instrument_type }}</p>
+                        <p><strong>Serial Number:</strong> <code>{{ instrument.serial_number }}</code></p>
+                        <p><strong>Asset Number:</strong> {{ instrument.asset_number|default:"-" }}</p>
+                        <p><strong>Manufacturer:</strong> {{ instrument.manufacturer|default:"-" }}</p>
+                        <p><strong>Model:</strong> {{ instrument.model|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Status:</strong>
+                            <span class="badge {% if instrument.status == 'ACTIVE' %}bg-success{% elif instrument.status == 'MAINTENANCE' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                {{ instrument.get_status_display }}
+                            </span>
+                        </p>
+                        <p><strong>Location:</strong> {{ instrument.location|default:"-" }}</p>
+                        <p><strong>Firmware:</strong> {{ instrument.firmware_version|default:"-" }}</p>
+                        <p><strong>Software:</strong> {{ instrument.software_version|default:"-" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Dates</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Purchase Date:</strong> {{ instrument.purchase_date|default:"-" }}</p>
+                        <p><strong>Installation:</strong> {{ instrument.installation_date|default:"-" }}</p>
+                        <p><strong>Warranty Expires:</strong>
+                            {% if instrument.warranty_expiration %}
+                                <span class="{% if not instrument.warranty_valid %}text-danger{% endif %}">{{ instrument.warranty_expiration }}</span>
+                            {% else %}-{% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Last Maintenance:</strong> {{ instrument.last_maintenance|default:"-" }}</p>
+                        <p><strong>Next Maintenance:</strong>
+                            {% if instrument.next_maintenance %}
+                                <span class="{% if instrument.is_maintenance_due %}text-danger fw-bold{% endif %}">{{ instrument.next_maintenance }}</span>
+                            {% else %}-{% endif %}
+                        </p>
+                        <p><strong>Last Calibration:</strong> {{ instrument.last_calibration|default:"-" }}</p>
+                        <p><strong>Next Calibration:</strong>
+                            {% if instrument.next_calibration %}
+                                <span class="{% if instrument.is_calibration_due %}text-danger fw-bold{% endif %}">{{ instrument.next_calibration }}</span>
+                            {% else %}-{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Maintenance History</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Performed By</th>
+                            <th>Passed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in maintenance_records %}
+                        <tr>
+                            <td><a href="{% url 'equipment:maintenance_detail' record.pk %}">{{ record.scheduled_date }}</a></td>
+                            <td>{{ record.get_maintenance_type_display }}</td>
+                            <td><span class="badge {% if record.status == 'COMPLETED' %}bg-success{% elif record.status == 'SCHEDULED' %}bg-info{% elif record.status == 'FAILED' %}bg-danger{% else %}bg-secondary{% endif %}">{{ record.get_status_display }}</span></td>
+                            <td>{{ record.performed_by|default:"-" }}</td>
+                            <td>{% if record.passed is not None %}{% if record.passed %}<i class="fas fa-check text-success"></i>{% else %}<i class="fas fa-times text-danger"></i>{% endif %}{% else %}-{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center text-muted py-3">No maintenance records.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">Contact</div>
+            <div class="card-body">
+                <p><strong>Person:</strong> {{ instrument.contact_person|default:"-" }}</p>
+                <p><strong>Phone:</strong> {{ instrument.contact_phone|default:"-" }}</p>
+                <p><strong>Email:</strong> {{ instrument.contact_email|default:"-" }}</p>
+            </div>
+        </div>
+        {% if instrument.notes %}
+        <div class="card">
+            <div class="card-header">Notes</div>
+            <div class="card-body">{{ instrument.notes }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

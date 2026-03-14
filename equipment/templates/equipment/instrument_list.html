@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Equipment - TRPM-LIMS{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Equipment</li>
+{% endblock %}
+
+{% block page_header %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-microscope me-2"></i>Equipment</h2>
+    <div>
+        <a href="{% url 'equipment:instrument_type_list' %}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-tags me-1"></i>Types
+        </a>
+        <a href="{% url 'equipment:maintenance_list' %}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-wrench me-1"></i>Maintenance
+        </a>
+        <a href="{% url 'equipment:instrument_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Add Instrument
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if maintenance_due_count or calibration_due_count %}
+<div class="row mb-3">
+    {% if maintenance_due_count %}
+    <div class="col-md-6">
+        <div class="alert alert-warning mb-0">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            <strong>{{ maintenance_due_count }}</strong> instrument{{ maintenance_due_count|pluralize }} due for maintenance
+        </div>
+    </div>
+    {% endif %}
+    {% if calibration_due_count %}
+    <div class="col-md-6">
+        <div class="alert alert-danger mb-0">
+            <i class="fas fa-exclamation-circle me-1"></i>
+            <strong>{{ calibration_due_count }}</strong> instrument{{ calibration_due_count|pluralize }} due for calibration
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Instruments</span>
+        <form class="d-flex" method="get">
+            <select name="status" class="form-select form-select-sm me-2" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="Search..." value="{{ search_query }}">
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Serial Number</th>
+                        <th>Status</th>
+                        <th>Location</th>
+                        <th>Next Maintenance</th>
+                        <th>Next Calibration</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instrument in instruments %}
+                    <tr>
+                        <td><a href="{% url 'equipment:instrument_detail' instrument.pk %}">{{ instrument.name }}</a></td>
+                        <td>{{ instrument.instrument_type.name }}</td>
+                        <td><code>{{ instrument.serial_number }}</code></td>
+                        <td>
+                            <span class="badge {% if instrument.status == 'ACTIVE' %}bg-success{% elif instrument.status == 'MAINTENANCE' %}bg-warning text-dark{% elif instrument.status == 'RETIRED' %}bg-secondary{% else %}bg-danger{% endif %}">
+                                {{ instrument.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ instrument.location }}</td>
+                        <td>
+                            {% if instrument.next_maintenance %}
+                                <span class="{% if instrument.is_maintenance_due %}text-danger fw-bold{% endif %}">
+                                    {{ instrument.next_maintenance }}
+                                </span>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td>
+                            {% if instrument.next_calibration %}
+                                <span class="{% if instrument.is_calibration_due %}text-danger fw-bold{% endif %}">
+                                    {{ instrument.next_calibration }}
+                                </span>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'equipment:instrument_update' instrument.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted py-4">No instruments found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

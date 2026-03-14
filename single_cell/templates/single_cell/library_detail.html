@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ library }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item"><a href="{% url 'single_cell:sample_list' %}">Single Cell</a></li><li class="breadcrumb-item"><a href="{% url 'single_cell:library_list' %}">Libraries</a></li><li class="breadcrumb-item active">{{ library }}</li>{% endblock %}
+{% block content %}
+<h2 class="mb-4">{{ library }}</h2>
+<div class="card"><div class="card-body">
+<div class="row">
+<div class="col-md-6">
+<p><strong>Sample:</strong> <a href="{% url 'single_cell:sample_detail' library.single_cell_sample.pk %}">{{ library.single_cell_sample.sample_id }}</a></p>
+<p><strong>NGS Library:</strong> {{ library.ngs_library }}</p>
+<p><strong>Library Type:</strong> {{ library.get_library_type_display }}</p>
+</div>
+<div class="col-md-6">
+<p><strong>Estimated Cells:</strong> {{ library.estimated_cells|default:"-" }}</p>
+<p><strong>Fraction Reads in Cells:</strong> {% if library.fraction_reads_in_cells %}{{ library.fraction_reads_in_cells }}{% else %}-{% endif %}</p>
+<p><strong>Feature Panel:</strong> {{ library.feature_barcode_panel|default:"-" }}</p>
+<p><strong>Created:</strong> {{ library.created_at|date:"Y-m-d H:i" }}</p>
+</div>
+</div>
+</div></div>
+{% endblock %}

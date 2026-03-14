@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Case {{ case.accession_number }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'pathology:case_list' %}">Pathology</a></li>
+<li class="breadcrumb-item active">{{ case.accession_number }}</li>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-microscope me-2"></i>Case: {{ case.accession_number }}</h2>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">Case Details</div>
+            <div class="card-body">
+                <p><strong>Patient:</strong> {{ case.patient_name|default:"-" }}</p>
+                <p><strong>Type:</strong> {{ case.pathology_type|default:"-" }}</p>
+                <p><strong>Status:</strong> {{ case.status|default:"-" }}</p>
+                <p><strong>Diagnosis:</strong> {{ case.diagnosis|default:"-" }}</p>
+                {% if case.gross_description %}<p><strong>Gross Description:</strong><br>{{ case.gross_description }}</p>{% endif %}
+                {% if case.microscopic_description %}<p><strong>Microscopic Description:</strong><br>{{ case.microscopic_description }}</p>{% endif %}
+            </div>
+        </div>
+        {% if addenda %}
+        <div class="card">
+            <div class="card-header">Addenda</div>
+            <div class="card-body">
+                {% for addendum in addenda %}
+                <div class="border-bottom pb-3 mb-3">
+                    <strong>{{ addendum.created_at|date:"M d, Y" }}</strong>
+                    <p>{{ addendum.content }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

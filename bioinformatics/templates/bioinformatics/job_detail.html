@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Job {{ job }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'bioinformatics:pipeline_list' %}">Bioinformatics</a></li>
+<li class="breadcrumb-item"><a href="{% url 'bioinformatics:job_list' %}">Jobs</a></li>
+<li class="breadcrumb-item active">{{ job }}</li>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-tasks me-2"></i>{{ job }}</h2>
+<div class="card mb-4">
+    <div class="card-header">Job Details</div>
+    <div class="card-body">
+        <p><strong>Service:</strong> {{ job.service|default:"-" }}</p>
+        <p><strong>Sample:</strong> {{ job.sample|default:"-" }}</p>
+        <p><strong>Status:</strong> <span class="badge bg-info">{{ job.get_status_display|default:job.status }}</span></p>
+        <p><strong>Started:</strong> {{ job.started_at|default:"-" }}</p>
+        <p><strong>Completed:</strong> {{ job.completed_at|default:"-" }}</p>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header">Results</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Result</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td><a href="{% url 'bioinformatics:result_detail' result.pk %}">{{ result }}</a></td>
+                    <td>{{ result.result_type|default:"-" }}</td>
+                    <td><span class="badge bg-info">{{ result.status|default:"-" }}</span></td>
+                    <td><a href="{% url 'bioinformatics:result_detail' result.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted py-3">No results.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

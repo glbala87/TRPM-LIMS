@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ folder.name }} - TRPM-LIMS{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'qms:document_list' %}">QMS</a></li>
+<li class="breadcrumb-item"><a href="{% url 'qms:folder_list' %}">Folders</a></li>
+<li class="breadcrumb-item active">{{ folder.name }}</li>
+{% endblock %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-folder-open me-2"></i>{{ folder.name }}</h2>
+{% if subfolders %}
+<h5 class="mb-3">Subfolders</h5>
+<div class="row mb-4">
+    {% for sub in subfolders %}
+    <div class="col-md-3 mb-2">
+        <a href="{% url 'qms:folder_detail' sub.pk %}" class="card text-decoration-none">
+            <div class="card-body py-2"><i class="fas fa-folder text-warning me-1"></i>{{ sub.name }}</div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+<div class="card">
+    <div class="card-header">Documents</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead><tr><th>Title</th><th>Document #</th><th>Status</th><th>Updated</th></tr></thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td><a href="{% url 'qms:document_detail' doc.pk %}">{{ doc.title }}</a></td>
+                    <td><code>{{ doc.document_number|default:"-" }}</code></td>
+                    <td><span class="badge bg-info">{{ doc.status|default:"Draft" }}</span></td>
+                    <td>{{ doc.updated_at|date:"M d, Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center text-muted py-3">No documents in this folder.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

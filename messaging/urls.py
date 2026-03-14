@@ -1,13 +1,12 @@
 # messaging/urls.py
-"""
-URL configuration for messaging module.
-"""
 
 from django.urls import path
+from . import views
 
 app_name = 'messaging'
 
 urlpatterns = [
-    # Web views can be added here
-    # API endpoints are registered in api/urls.py
+    path('', views.InboxView.as_view(), name='inbox'),
+    path('thread/<int:pk>/', views.ThreadDetailView.as_view(), name='thread_detail'),
+    path('notifications/', views.NotificationListView.as_view(), name='notification_list'),
 ]
