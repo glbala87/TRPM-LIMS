@@ -1,15 +1,18 @@
 # TRPM-LIMS - Laboratory Information Management System
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Django](https://img.shields.io/badge/Django-6.0+-green.svg)](https://www.djangoproject.com/)
 [![DRF](https://img.shields.io/badge/DRF-3.15+-red.svg)](https://www.django-rest-framework.org/)
+[![Tests](https://img.shields.io/badge/Tests-62%20passing-brightgreen.svg)]()
+[![Deploy Check](https://img.shields.io/badge/Deploy%20Check-0%20issues-brightgreen.svg)]()
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)]()
 [![HL7](https://img.shields.io/badge/HL7-v2.5.1-orange.svg)](https://www.hl7.org/)
 [![FHIR](https://img.shields.io/badge/FHIR-R4-blueviolet.svg)](https://www.hl7.org/fhir/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A comprehensive, multi-tenant Laboratory Information Management System built with Django 6.0. Designed for clinical laboratories, research institutions, and diagnostic facilities with support for molecular diagnostics, microbiology, pathology, pharmacogenomics, single-cell genomics, bioinformatics pipelines, and more.
+A comprehensive, production-ready, multi-tenant Laboratory Information Management System built with Django 6.0. Designed for clinical laboratories, research institutions, and diagnostic facilities with support for molecular diagnostics, microbiology, pathology, pharmacogenomics, single-cell genomics, bioinformatics pipelines, and more.
 
-TRPM-LIMS provides **26 integrated modules**, **150+ data models**, **184 templates**, **60+ REST API endpoints**, and **39 service classes** with full CRUD interfaces, role-based access control, HL7/FHIR interoperability, and multi-tenant data isolation.
+TRPM-LIMS provides **26 integrated modules**, **150+ data models**, **184 templates**, **60+ REST API endpoints**, and **39 service classes** with full CRUD interfaces, JWT authentication, TOTP MFA, role-based access control, 21 CFR Part 11 electronic signatures, HL7/FHIR interoperability, automated backups, and multi-tenant data isolation.
 
 ---
 
@@ -28,7 +31,10 @@ TRPM-LIMS provides **26 integrated modules**, **150+ data models**, **184 templa
 - [Configuration](#configuration)
 - [Usage Guide](#usage-guide)
 - [Production Deployment](#production-deployment)
+- [Testing](#testing)
+- [Compliance](#compliance)
 - [Troubleshooting](#troubleshooting)
+- [Make Commands](#make-commands)
 - [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
@@ -63,13 +69,17 @@ TRPM-LIMS provides **26 integrated modules**, **150+ data models**, **184 templa
 - **Resource Limits** - Max laboratories, max users, max samples/month per organization tier
 
 ### User Management & RBAC
-- **Authentication** - Login, logout, registration with password enforcement
+- **JWT Authentication** - Token-based API auth (15-min access, 1-day refresh, rotation + blacklist)
+- **TOTP MFA** - Multi-factor authentication via django-otp; enforced when `ENABLE_HIPAA_MODE=True`
+- **Password Security** - 12-char minimum, 90-day aging, last-5 reuse prevention, forced change on expiry
 - **Profile Management** - User profiles with edit capability
 - **6 Predefined Roles** - Admin, Lab Manager, Supervisor, Technician, Reader, Physician
 - **21 Granular Permissions** - Patient, Sample, Result, Equipment, Reagent, Storage, Analytics, User management, Audit access controls
+- **RBAC Matrix** - Formal role-to-permission mapping documented in `docs/compliance/rbac_matrix.md`
 - **User Administration** - Create, edit, delete users with role assignment (staff-only)
 - **Session Tracking** - UserSession model for login history and active session monitoring
 - **Account Locking** - Automatic account lockout after failed login attempts
+- **Electronic Signatures** - Immutable, integrity-hashed signatures per 21 CFR Part 11 (when `ENABLE_PART11=True`)
 
 ### Molecular Diagnostics
 - **Sample Workflow** - State machine tracking (Received → Extracted → Amplified → Sequenced → Analyzed → Reported) with workflow engine
@@ -334,33 +344,34 @@ TRPM-LIMS provides **26 integrated modules**, **150+ data models**, **184 templa
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.12+
 - Django 6.0+
-- SQLite (default) or PostgreSQL/MySQL
+- PostgreSQL 16+ (production) or SQLite (local dev only)
+- Redis 7+ (Celery broker, caching)
+- Docker & Docker Compose (recommended for deployment)
 
-### Python Dependencies
+### Key dependencies
 
-```
-Django>=6.0
-djangorestframework>=3.15.0
-drf-spectacular>=0.27.0
-django-cors-headers>=4.3.0
-django-filter>=23.5
-Pillow>=10.0
-python-barcode>=0.15.1
-qrcode>=7.4
-weasyprint>=60.0
-openpyxl>=3.1.0
-celery>=5.3.0
-redis>=5.0.0
-hl7apy>=1.3.4
-channels>=4.0.0
-cryptography>=41.0.0
-```
+| Category | Packages |
+|---|---|
+| **Core** | Django 6.0, djangorestframework, drf-spectacular |
+| **Auth** | djangorestframework-simplejwt (JWT), django-otp (TOTP MFA) |
+| **Config** | django-environ (12-factor env vars) |
+| **Database** | psycopg2-binary (PostgreSQL) |
+| **Static files** | whitenoise |
+| **PDF reports** | weasyprint |
+| **Background tasks** | celery, redis |
+| **Monitoring** | sentry-sdk |
+| **Testing** | pytest, pytest-django, pytest-cov, coverage |
+| **Load testing** | locust |
+
+See `requirements.txt` for the full list.
 
 ---
 
 ## Quick Start
+
+### Local development
 
 ```bash
 # Clone the repository
@@ -372,55 +383,86 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
-pip install -r requirements.txt
+make install  # or: pip install -r requirements.txt
 
-# Run migrations
-python manage.py migrate
+# Run migrations (SQLite for local dev)
+DEBUG=True python manage.py migrate
 
 # Create superuser
-python manage.py createsuperuser
+DEBUG=True python manage.py createsuperuser
 
 # Start development server
-python manage.py runserver
+make run  # or: DEBUG=True python manage.py runserver 0.0.0.0:8000
 ```
 
-Access the application at:
-- **Web Interface**: http://127.0.0.1:8000/
-- **Admin Panel**: http://127.0.0.1:8000/admin/
-- **REST API**: http://127.0.0.1:8000/api/
-- **API Docs (Swagger)**: http://127.0.0.1:8000/api/schema/swagger-ui/
-- **API Docs (ReDoc)**: http://127.0.0.1:8000/api/schema/redoc/
+### Production (Docker)
+
+```bash
+# Configure environment
+cp .env.example .env
+nano .env   # Set SECRET_KEY, DATABASE_URL, ALLOWED_HOSTS, etc.
+
+# Generate a SECRET_KEY
+make secretkey
+
+# Build and launch the full stack (app + Postgres + Redis + nginx + Celery)
+make docker-build
+make docker-up
+
+# Apply migrations and create admin
+docker compose exec app python manage.py migrate
+docker compose exec app python manage.py createsuperuser
+
+# Verify
+docker compose exec app python manage.py check --deploy
+```
+
+### Access the application
+
+| URL | Description |
+|---|---|
+| http://localhost:8000/ | Web interface (lab management home) |
+| http://localhost:8000/admin/ | Django admin panel |
+| http://localhost:8000/api/ | REST API root |
+| http://localhost:8000/api/docs/ | Swagger API documentation |
+| http://localhost:8000/api/redoc/ | ReDoc API documentation |
+
+### API authentication (JWT)
+
+```bash
+# Obtain a token
+curl -X POST http://localhost:8000/api/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your-password"}'
+# Returns: {"access": "eyJ...", "refresh": "eyJ..."}
+
+# Use the token
+curl http://localhost:8000/api/patients/ \
+  -H "Authorization: Bearer <access-token>"
+
+# Refresh when expired (access tokens expire in 15 minutes)
+curl -X POST http://localhost:8000/api/auth/token/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{"refresh": "<refresh-token>"}'
+```
 
 ---
 
 ## Installation
 
-### 1. Clone the Repository
+### 1. Clone and set up
 
 ```bash
 git clone https://github.com/glbala87/TRPM-LIMS.git
 cd TRPM-LIMS
-```
-
-### 2. Create Virtual Environment
-
-```bash
 python -m venv venv
-
-# On macOS/Linux:
-source venv/bin/activate
-
-# On Windows:
-venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
+source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-> **Note:** WeasyPrint requires additional system dependencies. See [WeasyPrint Installation](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation) for your OS.
+### 2. WeasyPrint system dependencies (for PDF reports)
+
+PDF generation is optional — the app runs fine without it, but report generation will fail.
 
 **macOS:**
 ```bash
@@ -429,62 +471,52 @@ brew install pango libffi
 
 **Ubuntu/Debian:**
 ```bash
-sudo apt-get install libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf2.0-0 libffi-dev
 ```
 
-### 4. Configure Database
+### 3. Environment configuration
 
-The default configuration uses SQLite. For production, configure PostgreSQL in `lims/settings.py`:
-
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'lims_db',
-        'USER': 'lims_user',
-        'PASSWORD': 'your_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-```
-
-### 5. Run Migrations
+All settings are loaded from environment variables via `django-environ`. For local dev, the defaults work out of the box (SQLite, DEBUG=True). For anything else:
 
 ```bash
-python manage.py makemigrations
-python manage.py migrate
+cp .env.example .env
+nano .env
 ```
 
-### 6. Create Superuser
+Key variables (see `.env.example` for the full list):
+
+| Variable | Default | Description |
+|---|---|---|
+| `SECRET_KEY` | dev fallback (insecure) | **Required in production** |
+| `DEBUG` | `False` | Set `True` for local dev |
+| `DATABASE_URL` | SQLite | e.g., `postgres://user:pass@host:5432/trpm_lims` |
+| `ALLOWED_HOSTS` | `[]` | Comma-separated hostnames |
+| `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Redis for background tasks |
+| `ENABLE_PART11` | `False` | 21 CFR Part 11 e-signature enforcement |
+| `ENABLE_HIPAA_MODE` | `False` | MFA enforcement + HIPAA controls |
+| `PASSWORD_MAX_AGE_DAYS` | `90` | Force password change interval (0 disables) |
+| `SENTRY_DSN` | empty | Sentry error monitoring (optional) |
+
+### 4. Run migrations and create admin
 
 ```bash
-python manage.py createsuperuser
+DEBUG=True python manage.py migrate
+DEBUG=True python manage.py createsuperuser
 ```
 
-### 7. Start Redis & Celery (Optional - for background tasks)
+### 5. Run the dev server
 
 ```bash
-# Start Redis
-redis-server
-
-# Start Celery worker
-celery -A lims worker -l info
-
-# Start Celery beat (scheduled tasks)
-celery -A lims beat -l info
+make run
+# or: DEBUG=True python manage.py runserver 0.0.0.0:8000
 ```
 
-### 8. Collect Static Files (Production)
+### 6. Optional: Redis & Celery (background tasks)
 
 ```bash
-python manage.py collectstatic
-```
-
-### 9. Run Development Server
-
-```bash
-python manage.py runserver
+redis-server &
+celery -A lims worker -l info &
+celery -A lims beat -l info &
 ```
 
 ---
@@ -526,7 +558,7 @@ TRPM-LIMS/
 ├── molecular_diagnostics/          # Molecular testing (core module)
 │   ├── models/                     # 8 model files:
 │   │   ├── samples.py              # MolecularSample, SampleQC, SamplePrep
-│   │   ├── tests.py                # MolecularTestPanel, GeneTarget, TestMethod
+│   │   ├── panels.py               # MolecularTestPanel, GeneTarget
 │   │   ├── batches.py              # ProcessingBatch, BatchItem
 │   │   ├── workflows.py            # Workflow, WorkflowStep
 │   │   ├── qc.py                   # QCResult, QCParameter
@@ -833,43 +865,52 @@ API authentication uses Django session authentication and token-based authentica
 
 ## Configuration
 
-### Laboratory Settings
+All configuration is via environment variables (`.env` file or system env). See `.env.example` for the full list with comments. Key configuration areas:
 
-Configure your laboratory in `lims/settings.py`:
+### Laboratory branding (used in generated reports)
 
-```python
-LAB_NAME = 'Your Laboratory Name'
-LAB_ADDRESS = '123 Lab Street, City, Country'
-LAB_PHONE = '+1-234-567-8900'
-LAB_ACCREDITATION = 'CAP #12345, CLIA #67890'
+```bash
+LAB_NAME="Your Laboratory Name"
+LAB_ADDRESS="123 Lab Street, City, Country"
+LAB_PHONE="+1-234-567-8900"
+LAB_ACCREDITATION="CAP #12345, CLIA #67890"
 ```
 
-### Time Zone
+### Security & authentication
 
-```python
-TIME_ZONE = 'America/New_York'  # Adjust to your timezone
+| Setting | Description |
+|---|---|
+| `SECRET_KEY` | **Required** — generate with `make secretkey` |
+| `ALLOWED_HOSTS` | Comma-separated production hostnames |
+| `CSRF_TRUSTED_ORIGINS` | e.g., `https://lims.example.org` |
+| `CORS_ALLOWED_ORIGINS` | Frontend origins allowed for API calls |
+| JWT access token | 15-minute lifetime, refresh tokens 1 day (configurable in settings) |
+| Password policy | 12-char minimum, 90-day aging, last-5 reuse prevention |
+
+### Compliance feature flags
+
+| Flag | Default | Effect |
+|---|---|---|
+| `ENABLE_PART11` | `False` | Requires electronic signatures on result approval/review |
+| `ENABLE_HIPAA_MODE` | `False` | Enforces TOTP MFA for all authenticated users |
+| `PASSWORD_MAX_AGE_DAYS` | `90` | Force password change interval (0 disables) |
+
+### Database
+
+```bash
+# PostgreSQL (production)
+DATABASE_URL=postgres://lims_user:lims_pass@localhost:5432/trpm_lims
+
+# SQLite (local dev — used automatically when DATABASE_URL is not set)
 ```
 
-### Media Files
+### External services
 
-```python
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-```
-
-### Celery (Background Tasks)
-
-```python
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-```
-
-### CORS (API Access)
-
-```python
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]
+```bash
+CELERY_BROKER_URL=redis://localhost:6379/0
+SENTRY_DSN=https://xxx@sentry.io/yyy   # optional
+FHIR_BASE_URL=http://localhost:8000/fhir
+NCBI_API_KEY=                            # for ClinVar variant annotation
 ```
 
 ---
@@ -941,121 +982,213 @@ Access the TAT dashboard at `/molecular/tat/`
 
 ## Production Deployment
 
-### Security Checklist
+### Docker (recommended)
 
-```python
-DEBUG = False
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
-ALLOWED_HOSTS = ['your-domain.com']
+The included `Dockerfile` is a multi-stage build (builder + slim runtime) with:
+- Non-root `lims` user
+- `tini` init process
+- Healthcheck endpoint
+- Static files collected at build time via WhiteNoise
 
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_SSL_REDIRECT = True
-```
+The `docker-compose.yml` provides the full stack:
 
-### Using Gunicorn
-
-```bash
-pip install gunicorn
-gunicorn lims.wsgi:application --bind 0.0.0.0:8000 --workers 4
-```
-
-### Using Docker
-
-```dockerfile
-FROM python:3.11-slim
-
-RUN apt-get update && apt-get install -y \
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-RUN python manage.py collectstatic --noinput
-
-EXPOSE 8000
-CMD ["gunicorn", "lims.wsgi:application", "--bind", "0.0.0.0:8000"]
-```
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  web:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - DJANGO_SECRET_KEY=your-secret-key
-      - DEBUG=False
-    volumes:
-      - ./media:/app/media
-      - ./staticfiles:/app/staticfiles
-    depends_on:
-      - redis
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
-  celery:
-    build: .
-    command: celery -A lims worker -l info
-    environment:
-      - DJANGO_SECRET_KEY=your-secret-key
-    depends_on:
-      - redis
-
-  celery-beat:
-    build: .
-    command: celery -A lims beat -l info
-    environment:
-      - DJANGO_SECRET_KEY=your-secret-key
-    depends_on:
-      - redis
-```
+| Service | Image | Purpose |
+|---|---|---|
+| `app` | `trpm-lims:latest` (built from Dockerfile) | Django + gunicorn |
+| `db` | `postgres:16-alpine` | Database |
+| `redis` | `redis:7-alpine` | Celery broker + cache |
+| `celery` | same as app | Background task worker |
+| `nginx` | `nginx:1.27-alpine` | Reverse proxy, media serving |
+| `backup` | `postgres:16-alpine` (via override) | Daily pg_dump (02:00 UTC) |
 
 ```bash
-docker-compose up -d
+# 1. Configure
+cp .env.example .env
+nano .env   # Set SECRET_KEY, ALLOWED_HOSTS, POSTGRES_PASSWORD, etc.
+
+# 2. Build and launch
+make docker-build
+make docker-up
+
+# 3. Initialize
+docker compose exec app python manage.py migrate
+docker compose exec app python manage.py createsuperuser
+
+# 4. Verify
+docker compose exec app python manage.py check --deploy
+# Expected: "System check identified no issues"
 ```
+
+### Security hardening (automatic when DEBUG=False)
+
+The following are enforced in production mode:
+- HSTS (1 year, subdomains, preload)
+- Secure session and CSRF cookies
+- SSL redirect
+- X-Frame-Options: DENY
+- Content-Type nosniff
+- Referrer-Policy: same-origin
+
+### Gunicorn configuration
+
+`gunicorn.conf.py` is fully env-overridable:
+
+| Env var | Default | Description |
+|---|---|---|
+| `GUNICORN_WORKERS` | `(2 * CPU) + 1` (max 8) | Worker processes |
+| `GUNICORN_THREADS` | `4` | Threads per worker |
+| `GUNICORN_TIMEOUT` | `60` | Request timeout (seconds) |
+| `GUNICORN_MAX_REQUESTS` | `1000` | Recycle workers after N requests |
+
+### Backups
+
+Automated daily backups are included via `docker-compose.override.yml`:
+
+```bash
+# Manual backup
+docker compose exec backup /scripts/backup.sh
+
+# Test that backups are restorable
+docker compose exec backup /scripts/restore_drill.sh
+```
+
+Backups are gzipped pg_dump files stored in a Docker volume with 30-day retention.
+
+### Load testing
+
+```bash
+pip install locust
+locust --host=http://localhost:8000
+# Opens web UI at http://localhost:8089
+```
+
+### CI/CD
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push/PR:
+- Postgres + Redis service containers
+- `python manage.py check --deploy`
+- `python manage.py migrate`
+- `pytest` with coverage report
+
+### Deploy checklist
+
+```
+[ ] SECRET_KEY generated and set (make secretkey)
+[ ] DATABASE_URL points to production PostgreSQL
+[ ] ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS set to real domains
+[ ] TLS certificate provisioned (nginx/Caddy/ALB)
+[ ] docker compose up -d succeeds
+[ ] python manage.py check --deploy returns 0 issues
+[ ] python manage.py migrate applied
+[ ] Superuser created
+[ ] Backup restore drill passed (scripts/restore_drill.sh)
+[ ] Sentry DSN configured (optional but recommended)
+```
+
+---
+
+## Testing
+
+```bash
+make test              # Run all 62 tests
+make test-smoke        # Smoke tests only (fast)
+make coverage          # Tests with HTML coverage report
+make check             # Django system checks (dev mode)
+make deploy-check      # Django deploy checks (production mode)
+```
+
+Test coverage spans all 26 apps with smoke tests (model creation, API auth) plus an end-to-end integration test covering the full workflow: patient registration, lab order, molecular sample, result entry, review, approval with electronic signature, and audit trail verification.
+
+---
+
+## Compliance
+
+TRPM-LIMS includes scaffolding for 21 CFR Part 11 and HIPAA compliance. See `docs/compliance/` for the full document set:
+
+| Document | Path |
+|---|---|
+| Validation Master Plan | `docs/compliance/validation_master_plan.md` |
+| User Requirements Specification | `docs/compliance/user_requirements_specification.md` |
+| Installation Qualification (IQ) | `docs/compliance/installation_qualification.md` |
+| Operational Qualification (OQ) | `docs/compliance/operational_qualification.md` |
+| Performance Qualification (PQ) | `docs/compliance/performance_qualification.md` |
+| Requirements Traceability Matrix | `docs/compliance/traceability_matrix.md` |
+| RBAC Matrix | `docs/compliance/rbac_matrix.md` |
+| Part 11 Assessment | `docs/compliance/part11_assessment.md` |
+| HIPAA Risk Assessment | `docs/compliance/hipaa_risk_assessment.md` |
+| Training Log | `docs/compliance/training_log.md` |
+| Change Control Log | `docs/compliance/change_control_log.md` |
+
+SOPs are in `docs/sops/`: electronic signature issuance, credential loss, incident response, break-glass access.
 
 ---
 
 ## Troubleshooting
 
-### WeasyPrint Issues
+### Port already in use
 
 ```bash
+lsof -ti:8000 | xargs kill -9
+make run
+```
+
+### WeasyPrint warnings
+
+The "WeasyPrint could not import some external libraries" message is cosmetic. PDF report generation won't work without the native libs, but everything else runs fine. To fix:
+
+```bash
+# macOS
+brew install pango
+
+# Ubuntu/Debian
+sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libcairo2
+
+# Verify
 python -c "from weasyprint import HTML; print('WeasyPrint OK')"
 ```
 
-### Migration Errors
+### Migration errors
 
 ```bash
-python manage.py check
-python manage.py showmigrations
+DEBUG=True python manage.py check
+DEBUG=True python manage.py showmigrations
+DEBUG=True python manage.py migrate --run-syncdb
 ```
 
-### Static Files Not Loading
+### Static files not loading
 
 ```bash
-python manage.py collectstatic --clear
+DEBUG=True python manage.py collectstatic --clear
 ```
 
-### HL7/FHIR Connection Issues
+### Deploy check shows issues
 
 ```bash
-# Verify hl7apy installation
-python -c "import hl7apy; print('HL7 OK')"
+make deploy-check
+# Fix any ERRORS (WARNINGS are informational)
+```
 
-# Check external system configuration in admin
-python manage.py shell -c "from data_exchange.models import ExternalSystem; print(ExternalSystem.objects.all())"
+---
+
+## Make commands
+
+```
+make help              Show all targets
+make install           Install python dependencies
+make migrate           Apply database migrations
+make run               Run dev server (DEBUG=True, port 8000)
+make test              Run test suite
+make test-smoke        Run smoke tests only
+make coverage          Tests with coverage report
+make check             Django system checks (dev)
+make deploy-check      Django deploy checks (production)
+make secretkey         Generate a SECRET_KEY
+make docker-build      Build Docker image
+make docker-up         Start full stack
+make docker-down       Stop full stack
+make docker-logs       Tail app logs
+make docker-shell      Shell into app container
+make clean             Remove caches
 ```
 
 ---
@@ -1065,10 +1198,11 @@ python manage.py shell -c "from data_exchange.models import ExternalSystem; prin
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Run tests: `python manage.py test`
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+4. Run tests: `make test`
+5. Run deploy check: `make deploy-check`
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
 ---
 

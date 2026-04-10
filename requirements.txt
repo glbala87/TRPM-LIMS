@@ -41,6 +41,7 @@ redis>=5.0.0
 # Instrument Integration
 # ============================================
 hl7apy>=1.3.4                # HL7 message parsing
+requests>=2.31.0             # HTTP client (ClinVar, external APIs)
 
 # ============================================
 # Real-time Communication (optional)
