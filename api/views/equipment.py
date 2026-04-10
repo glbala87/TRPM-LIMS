@@ -26,7 +26,7 @@ class InstrumentTypeViewSet(viewsets.ModelViewSet):
     serializer_class = InstrumentTypeSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [SearchFilter, OrderingFilter]
-    search_fields = ['name', 'manufacturer', 'model_number']
+    search_fields = ['name', 'code', 'manufacturer']
     ordering_fields = ['name', 'manufacturer']
 
 
@@ -45,7 +45,7 @@ class InstrumentViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = InstrumentFilter
     search_fields = ['name', 'serial_number', 'asset_number', 'location']
-    ordering_fields = ['name', 'status', 'next_maintenance_date', 'next_calibration_date']
+    ordering_fields = ['name', 'status', 'next_maintenance', 'next_calibration']
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -112,7 +112,7 @@ class InstrumentViewSet(viewsets.ModelViewSet):
     def maintenance_due(self, request):
         """Get instruments with maintenance due."""
         instruments = self.get_queryset().filter(
-            next_maintenance_date__lte=timezone.now().date()
+            next_maintenance__lte=timezone.now().date()
         )
         serializer = InstrumentListSerializer(instruments, many=True, context={'request': request})
         return Response(serializer.data)
@@ -121,7 +121,7 @@ class InstrumentViewSet(viewsets.ModelViewSet):
     def calibration_due(self, request):
         """Get instruments with calibration due."""
         instruments = self.get_queryset().filter(
-            next_calibration_date__lte=timezone.now().date()
+            next_calibration__lte=timezone.now().date()
         )
         serializer = InstrumentListSerializer(instruments, many=True, context={'request': request})
         return Response(serializer.data)
@@ -141,7 +141,7 @@ class MaintenanceRecordViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = MaintenanceRecordFilter
     search_fields = ['instrument__name', 'description', 'service_provider']
-    ordering_fields = ['scheduled_date', 'completed_date', 'status']
+    ordering_fields = ['scheduled_date', 'completed_at', 'status']
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -162,8 +162,10 @@ class MaintenanceRecordViewSet(viewsets.ModelViewSet):
             )
 
         record.status = 'COMPLETED'
-        record.completed_date = timezone.now().date()
-        record.performed_by = request.user
+        record.completed_at = timezone.now()
+        record.performed_by_user = request.user
+        if not record.performed_by:
+            record.performed_by = request.user.get_full_name() or request.user.username
 
         # Update optional fields from request
         if 'parts_replaced' in request.data:

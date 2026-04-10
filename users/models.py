@@ -356,3 +356,29 @@ class UserSession(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.created_at}"
+
+
+class PasswordHistory(models.Model):
+    """
+    Stores historical password hashes for reuse prevention.
+
+    Used by :class:`users.validators.PasswordHistoryValidator` to
+    ensure a user does not reuse any of their last N passwords, as
+    required by 21 CFR 11.300(b) and common HIPAA baselines.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='password_history',
+    )
+    password_hash = models.CharField(max_length=256)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Password History Entry'
+        verbose_name_plural = 'Password History'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['user', '-created_at'])]
+
+    def __str__(self):
+        return f'{self.user.username} @ {self.created_at:%Y-%m-%d %H:%M}'

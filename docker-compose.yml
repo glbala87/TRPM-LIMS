@@ -1,0 +1,84 @@
+# docker-compose.yml — TRPM-LIMS reference stack
+#
+# Launches app + Postgres + Redis + nginx for local preview of the full
+# production topology. Not intended as-is for production: you'll want secrets
+# management, real TLS certs, and persistent volumes on managed storage.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-trpm_lims}
+      POSTGRES_USER: ${POSTGRES_USER:-lims}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lims} -d ${POSTGRES_DB:-trpm_lims}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-lims}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-trpm_lims}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    volumes:
+      - media_data:/app/media
+      - logs_data:/app/logs
+    expose:
+      - "8000"
+
+  celery:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - app
+      - redis
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-lims}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-trpm_lims}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    command: celery -A lims worker -l info
+    volumes:
+      - media_data:/app/media
+      - logs_data:/app/logs
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - media_data:/var/www/media:ro
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
+  logs_data:

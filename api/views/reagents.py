@@ -49,7 +49,7 @@ class ReagentViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ReagentFilter
     search_fields = ['name', 'vendor', 'lot_number']
-    ordering_fields = ['name', 'expiration_date', 'stock_quantity']
+    ordering_fields = ['name', 'expiration_date', 'quantity_in_stock']
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -66,7 +66,7 @@ class ReagentViewSet(viewsets.ModelViewSet):
 
         summary = {
             'total_reagents': Reagent.objects.count(),
-            'low_stock_count': Reagent.objects.filter(stock_quantity__lt=10).count(),
+            'low_stock_count': Reagent.objects.filter(quantity_in_stock__lt=10).count(),
             'expired_count': Reagent.objects.filter(expiration_date__lt=today).count(),
             'expiring_soon_count': Reagent.objects.filter(
                 expiration_date__gte=today,
@@ -81,7 +81,7 @@ class ReagentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='low-stock')
     def low_stock(self, request):
         """Get reagents with low stock."""
-        reagents = self.get_queryset().filter(stock_quantity__lt=10)
+        reagents = self.get_queryset().filter(quantity_in_stock__lt=10)
         serializer = ReagentListSerializer(reagents, many=True, context={'request': request})
         return Response(serializer.data)
 
@@ -106,13 +106,13 @@ class ReagentViewSet(viewsets.ModelViewSet):
         quantity = request.data.get('quantity', 1)
         lab_order_id = request.data.get('lab_order_id')
 
-        if reagent.stock_quantity < quantity:
+        if reagent.quantity_in_stock < quantity:
             return Response(
                 {'error': 'Insufficient stock'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        reagent.stock_quantity -= quantity
+        reagent.quantity_in_stock -= quantity
         reagent.save()
 
         # Record usage
@@ -122,7 +122,7 @@ class ReagentViewSet(viewsets.ModelViewSet):
             if lab_order:
                 ReagentUsage.objects.create(
                     reagent=reagent,
-                    lab_order=lab_order,
+                    used_in_lab_order=lab_order,
                     quantity_used=quantity
                 )
 
@@ -136,7 +136,7 @@ class ReagentViewSet(viewsets.ModelViewSet):
         new_lot_number = request.data.get('lot_number')
         new_expiration = request.data.get('expiration_date')
 
-        reagent.stock_quantity += quantity
+        reagent.quantity_in_stock += quantity
 
         if new_lot_number:
             reagent.lot_number = new_lot_number
@@ -177,13 +177,13 @@ class MolecularReagentViewSet(viewsets.ModelViewSet):
     - use_volume: POST /api/molecular-reagents/{id}/use-volume/
     """
     queryset = MolecularReagent.objects.all().prefetch_related(
-        'test_panels', 'gene_targets'
+        'linked_test_panels', 'linked_gene_targets'
     ).order_by('name')
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = MolecularReagentFilter
-    search_fields = ['name', 'catalog_number', 'lot_number', 'vendor']
+    search_fields = ['name', 'catalog_number', 'lot_number', 'manufacturer', 'supplier']
     ordering_fields = ['name', 'expiration_date', 'current_volume_ul']
 
     def get_serializer_class(self):
@@ -217,7 +217,11 @@ class MolecularReagentViewSet(viewsets.ModelViewSet):
         reagent = self.get_object()
         reagent.is_validated = True
         reagent.validation_date = timezone.now().date()
-        reagent.validated_by = request.user
+        # MolecularReagent has no `validated_by` field; record the validator in
+        # validation_notes instead to keep the audit trail.
+        existing = reagent.validation_notes or ''
+        stamp = f"Validated by {request.user.get_username()} on {reagent.validation_date}"
+        reagent.validation_notes = (existing + '\n' + stamp).strip() if existing else stamp
         reagent.save()
         return Response(MolecularReagentSerializer(reagent, context={'request': request}).data)
 

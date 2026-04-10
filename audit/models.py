@@ -238,11 +238,21 @@ class AuditTrail(models.Model):
         version = (latest.version + 1) if latest else 1
 
         # Create snapshot from model fields
+        from django.db.models.fields.files import FieldFile
+        from decimal import Decimal
+
         snapshot = {}
         for field in obj._meta.fields:
             value = getattr(obj, field.name)
             # Convert non-JSON-serializable types
-            if hasattr(value, 'isoformat'):
+            if value is None:
+                pass
+            elif isinstance(value, FieldFile):
+                # Store the stored filename; accessing .url without a file raises.
+                value = value.name or None
+            elif isinstance(value, Decimal):
+                value = float(value)
+            elif hasattr(value, 'isoformat'):
                 value = value.isoformat()
             elif hasattr(value, 'pk'):
                 value = value.pk

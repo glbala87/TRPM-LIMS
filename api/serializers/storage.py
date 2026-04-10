@@ -1,170 +1,152 @@
 """
 Serializers for storage app models.
+Field lists are aligned with the actual model definitions in storage/models.py.
 """
 from rest_framework import serializers
 from storage.models import StorageUnit, StorageRack, StoragePosition, StorageLog
 
 
 class StoragePositionSerializer(serializers.ModelSerializer):
-    """Serializer for StoragePosition model."""
-    full_location = serializers.CharField(read_only=True)
-    sample_id = serializers.CharField(source='sample.sample_id', read_only=True, allow_null=True)
+    full_location = serializers.SerializerMethodField()
 
     class Meta:
         model = StoragePosition
         fields = [
-            'id', 'rack', 'position_label', 'row', 'column',
-            'is_occupied', 'is_reserved', 'sample', 'sample_id',
-            'stored_at', 'stored_by', 'full_location'
+            'id', 'rack', 'position', 'row', 'column',
+            'is_occupied', 'is_reserved',
+            'stored_at', 'stored_by', 'notes', 'full_location',
         ]
-        read_only_fields = ['id', 'is_occupied', 'stored_at', 'full_location']
+        read_only_fields = ['id', 'stored_at']
+
+    def get_full_location(self, obj):
+        return str(obj)
 
 
 class StoragePositionListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for StoragePosition list views."""
-    full_location = serializers.CharField(read_only=True)
-
     class Meta:
         model = StoragePosition
-        fields = ['id', 'position_label', 'is_occupied', 'is_reserved', 'full_location']
+        fields = ['id', 'position', 'is_occupied', 'is_reserved']
 
 
 class StorageRackSerializer(serializers.ModelSerializer):
-    """Serializer for StorageRack model."""
-    unit_name = serializers.CharField(source='storage_unit.name', read_only=True)
-    total_positions = serializers.IntegerField(read_only=True)
-    occupied_positions = serializers.IntegerField(read_only=True)
-    available_positions = serializers.IntegerField(read_only=True)
+    unit_name = serializers.CharField(source='unit.name', read_only=True)
     positions = StoragePositionListSerializer(many=True, read_only=True)
 
     class Meta:
         model = StorageRack
         fields = [
-            'id', 'storage_unit', 'unit_name', 'name', 'rack_type',
-            'rows', 'columns', 'total_positions', 'occupied_positions',
-            'available_positions', 'description', 'positions'
+            'id', 'unit', 'unit_name', 'rack_id', 'name', 'shelf_number',
+            'rows', 'columns', 'rack_type', 'notes', 'is_active', 'positions',
         ]
 
 
 class StorageRackListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for StorageRack list views."""
-    unit_name = serializers.CharField(source='storage_unit.name', read_only=True)
-    available_positions = serializers.IntegerField(read_only=True)
+    unit_name = serializers.CharField(source='unit.name', read_only=True)
 
     class Meta:
         model = StorageRack
-        fields = ['id', 'name', 'unit_name', 'rows', 'columns', 'available_positions']
+        fields = ['id', 'name', 'rack_id', 'unit_name', 'rows', 'columns', 'is_active']
 
 
 class StorageRackCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating StorageRack records."""
-
     class Meta:
         model = StorageRack
-        fields = ['storage_unit', 'name', 'rack_type', 'rows', 'columns', 'description']
+        fields = ['unit', 'rack_id', 'name', 'shelf_number', 'rack_type', 'rows', 'columns', 'notes']
 
     def create(self, validated_data):
         rack = super().create(validated_data)
-        # Auto-create positions for the rack
-        for row in range(rack.rows):
-            for col in range(rack.columns):
-                position_label = rack.get_position_label(row, col)
+        # Auto-create empty positions for the rack grid.
+        for row in range(rack.rows or 0):
+            for col in range(rack.columns or 0):
+                position_label = (
+                    rack.get_position_label(row, col)
+                    if hasattr(rack, 'get_position_label')
+                    else f"R{row + 1}C{col + 1}"
+                )
                 StoragePosition.objects.create(
                     rack=rack,
-                    position_label=position_label,
+                    position=position_label,
                     row=row,
-                    column=col
+                    column=col,
                 )
         return rack
 
 
 class StorageUnitSerializer(serializers.ModelSerializer):
-    """Serializer for StorageUnit model."""
     unit_type_display = serializers.CharField(source='get_unit_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    temperature_range = serializers.CharField(read_only=True)
-    total_positions = serializers.IntegerField(read_only=True)
-    occupied_positions = serializers.IntegerField(read_only=True)
-    available_positions = serializers.IntegerField(read_only=True)
     racks = StorageRackListSerializer(many=True, read_only=True)
 
     class Meta:
         model = StorageUnit
         fields = [
-            'id', 'name', 'unit_type', 'unit_type_display', 'status', 'status_display',
-            'location', 'current_temperature', 'temperature_range',
-            'min_temperature', 'max_temperature', 'temperature_alarm_enabled',
-            'capacity_description', 'total_positions', 'occupied_positions',
-            'available_positions', 'description', 'racks', 'created_at', 'updated_at'
+            'id', 'name', 'code', 'unit_type', 'unit_type_display',
+            'status', 'status_display', 'location',
+            'temperature_min', 'temperature_max', 'temperature_target',
+            'manufacturer', 'model', 'serial_number',
+            'capacity_description', 'has_temperature_monitoring', 'has_alarm',
+            'notes', 'is_active', 'racks', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class StorageUnitListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for StorageUnit list views."""
     unit_type_display = serializers.CharField(source='get_unit_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    available_positions = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = StorageUnit
         fields = [
-            'id', 'name', 'unit_type_display', 'status_display',
-            'location', 'current_temperature', 'available_positions'
+            'id', 'name', 'code', 'unit_type_display', 'status_display',
+            'location', 'temperature_target',
         ]
 
 
 class StorageUnitCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating StorageUnit records."""
-
     class Meta:
         model = StorageUnit
         fields = [
-            'name', 'unit_type', 'location', 'min_temperature', 'max_temperature',
-            'temperature_alarm_enabled', 'capacity_description', 'description'
+            'name', 'code', 'unit_type', 'location',
+            'temperature_min', 'temperature_max', 'temperature_target',
+            'manufacturer', 'model', 'serial_number',
+            'capacity_description', 'has_temperature_monitoring', 'has_alarm', 'notes',
         ]
 
 
 class StorageLogSerializer(serializers.ModelSerializer):
-    """Serializer for StorageLog model."""
     action_display = serializers.CharField(source='get_action_display', read_only=True)
-    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
-    sample_id = serializers.CharField(source='sample.sample_id', read_only=True, allow_null=True)
-    from_location = serializers.CharField(source='from_position.full_location', read_only=True, allow_null=True)
-    to_location = serializers.CharField(source='to_position.full_location', read_only=True, allow_null=True)
+    performed_by_name = serializers.CharField(source='performed_by.get_full_name', read_only=True)
+    from_location = serializers.CharField(source='from_position.__str__', read_only=True)
+    to_location = serializers.CharField(source='to_position.__str__', read_only=True)
 
     class Meta:
         model = StorageLog
         fields = [
-            'id', 'sample', 'sample_id', 'action', 'action_display',
+            'id', 'position', 'sample_id', 'action', 'action_display',
             'from_position', 'from_location', 'to_position', 'to_location',
-            'user', 'user_name', 'reason', 'timestamp'
+            'performed_by', 'performed_by_name', 'reason', 'notes', 'timestamp',
         ]
         read_only_fields = ['id', 'timestamp']
 
 
 class StorageLogListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for StorageLog list views."""
     action_display = serializers.CharField(source='get_action_display', read_only=True)
-    sample_id = serializers.CharField(source='sample.sample_id', read_only=True, allow_null=True)
 
     class Meta:
         model = StorageLog
         fields = ['id', 'sample_id', 'action_display', 'timestamp']
 
 
+# Action serializers — these stay generic since they aren't backed by models.
 class StoreSampleSerializer(serializers.Serializer):
-    """Serializer for storing a sample in a position."""
     sample_id = serializers.IntegerField()
     reason = serializers.CharField(required=False, allow_blank=True)
 
 
 class MoveSampleSerializer(serializers.Serializer):
-    """Serializer for moving a sample to a new position."""
     to_position_id = serializers.IntegerField()
     reason = serializers.CharField(required=False, allow_blank=True)
 
 
 class RetrieveSampleSerializer(serializers.Serializer):
-    """Serializer for retrieving a sample from storage."""
     reason = serializers.CharField(required=False, allow_blank=True)

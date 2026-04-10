@@ -436,3 +436,228 @@ class PatientConsent(models.Model):
             is_active=True,
             status='CONSENTED'
         ).exists()
+
+
+# ---------------------------------------------------------------------------
+# 21 CFR Part 11 — Electronic signature
+# ---------------------------------------------------------------------------
+class ElectronicSignature(models.Model):
+    """
+    21 CFR Part 11-compliant electronic signature.
+
+    An ElectronicSignature record is the machine-readable proof that a
+    named, authenticated individual applied a signature to a specific
+    record for a specific reason at a specific point in time.
+
+    Per 21 CFR 11.50, an e-signature must capture:
+      - The printed name of the signer
+      - The date and time of signing
+      - The meaning/reason for the signing (e.g., approval, authorship,
+        responsibility, review)
+
+    Per 21 CFR 11.70, e-signatures must be linked to their records such
+    that they cannot be excised, copied, or otherwise transferred —
+    enforced here by the immutable FK + the snapshot JSON of what was
+    signed, and by blocking updates/deletes of saved records.
+
+    This model is ALWAYS loaded, but is only *required* on result-release
+    workflows when `settings.ENABLE_PART11` is True. Research deployments
+    may still record signatures voluntarily.
+    """
+
+    REASON_CHOICES = [
+        ('AUTHORSHIP', 'Authorship'),
+        ('REVIEW', 'Review'),
+        ('APPROVAL', 'Approval'),
+        ('RESPONSIBILITY', 'Responsibility'),
+        ('RELEASE', 'Release to patient/clinician'),
+        ('AMENDMENT', 'Amendment'),
+        ('WITNESS', 'Witness'),
+        ('REJECTION', 'Rejection'),
+        ('OTHER', 'Other (see notes)'),
+    ]
+
+    METHOD_CHOICES = [
+        ('PASSWORD', 'Username + password re-authentication'),
+        ('BIOMETRIC', 'Biometric'),
+        ('SMARTCARD', 'Smart card / PKI'),
+        ('MFA', 'Multi-factor authentication'),
+    ]
+
+    # --- What was signed (immutable generic reference) ---
+    content_type = models.ForeignKey(
+        'contenttypes.ContentType',
+        on_delete=models.PROTECT,
+        help_text='Model of the signed record.',
+    )
+    object_id = models.PositiveIntegerField(
+        help_text='Primary key of the signed record.',
+    )
+    record_snapshot = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Snapshot of the record state at the moment of signing '
+                  '(for non-repudiation — prevents after-the-fact edits '
+                  'from altering what the signer actually approved).',
+    )
+
+    # --- Who signed (frozen at sign time — FK is SET_NULL so user deletion
+    # does not erase the audit trail, but signer_name/signer_username are
+    # captured verbatim so the signature remains interpretable) ---
+    signer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='electronic_signatures',
+    )
+    signer_username = models.CharField(max_length=150)
+    signer_full_name = models.CharField(max_length=300)
+    signer_role = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text='Role/title at time of signing (e.g., "Laboratory Director").',
+    )
+
+    # --- Why, how, when ---
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    meaning = models.CharField(
+        max_length=500,
+        help_text='Free-text meaning of the signature, as displayed to the '
+                  'signer at the moment of signing (21 CFR 11.50).',
+    )
+    method = models.CharField(
+        max_length=20,
+        choices=METHOD_CHOICES,
+        default='PASSWORD',
+    )
+    signed_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    # --- Context (for forensic review / chain of custody) ---
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+
+    # --- Cryptographic integrity ---
+    # sha256 hex digest of a canonical serialization of the signer+reason+
+    # snapshot+signed_at tuple. Allows detection of tampering even if DB
+    # rows are modified outside the ORM.
+    integrity_hash = models.CharField(max_length=64, blank=True)
+
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Electronic Signature'
+        verbose_name_plural = 'Electronic Signatures'
+        ordering = ['-signed_at']
+        indexes = [
+            models.Index(fields=['content_type', 'object_id', '-signed_at']),
+            models.Index(fields=['signer', '-signed_at']),
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.signer_username} [{self.get_reason_display()}] '
+            f'@ {self.signed_at:%Y-%m-%d %H:%M:%S}'
+        )
+
+    # --- Immutability enforcement (21 CFR 11.70) ---
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            # Saved signatures are immutable. Tampering is an audit failure.
+            raise ValidationError(
+                'Electronic signatures are immutable and cannot be modified '
+                'after creation (21 CFR 11.70).'
+            )
+        if not self.integrity_hash:
+            self.integrity_hash = self._compute_integrity_hash()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError(
+            'Electronic signatures are immutable and cannot be deleted.'
+        )
+
+    def _compute_integrity_hash(self) -> str:
+        import hashlib
+        import json
+        payload = {
+            'content_type_id': self.content_type_id,
+            'object_id': self.object_id,
+            'signer_username': self.signer_username,
+            'signer_full_name': self.signer_full_name,
+            'reason': self.reason,
+            'meaning': self.meaning,
+            'signed_at': self.signed_at.isoformat() if self.signed_at else None,
+            'record_snapshot': self.record_snapshot,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, default=str).encode('utf-8')
+        ).hexdigest()
+
+    def verify_integrity(self) -> bool:
+        """Recompute the integrity hash and compare to the stored one."""
+        return self.integrity_hash == self._compute_integrity_hash()
+
+    @classmethod
+    def sign(cls, *, record, signer, reason, meaning, method='PASSWORD',
+             request=None, notes=''):
+        """
+        Record an electronic signature on an arbitrary model instance.
+
+        Callers are responsible for having just re-authenticated the signer
+        (per 21 CFR 11.200) before calling this method.
+        """
+        from django.contrib.contenttypes.models import ContentType
+
+        ct = ContentType.objects.get_for_model(record)
+        snapshot = cls._build_snapshot(record)
+
+        sig = cls(
+            content_type=ct,
+            object_id=record.pk,
+            record_snapshot=snapshot,
+            signer=signer,
+            signer_username=signer.get_username() if signer else '',
+            signer_full_name=(
+                signer.get_full_name() if signer and hasattr(signer, 'get_full_name')
+                else ''
+            ),
+            reason=reason,
+            meaning=meaning,
+            method=method,
+            notes=notes,
+        )
+        if request is not None:
+            sig.ip_address = cls._client_ip(request)
+            sig.user_agent = request.META.get('HTTP_USER_AGENT', '')[:1000]
+        sig.save()
+        return sig
+
+    @staticmethod
+    def _build_snapshot(record) -> dict:
+        from django.db.models.fields.files import FieldFile
+        from decimal import Decimal
+
+        snap = {}
+        for f in record._meta.fields:
+            val = getattr(record, f.name)
+            if val is None:
+                snap[f.name] = None
+            elif isinstance(val, FieldFile):
+                snap[f.name] = val.name or None
+            elif isinstance(val, Decimal):
+                snap[f.name] = float(val)
+            elif hasattr(val, 'isoformat'):
+                snap[f.name] = val.isoformat()
+            elif hasattr(val, 'pk'):
+                snap[f.name] = val.pk
+            else:
+                snap[f.name] = val if isinstance(val, (str, int, float, bool, list, dict)) else str(val)
+        return snap
+
+    @staticmethod
+    def _client_ip(request):
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR')

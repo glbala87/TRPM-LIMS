@@ -1,7 +1,7 @@
 # molecular_diagnostics/models/__init__.py
 
 from .samples import MolecularSampleType, MolecularSample
-from .tests import GeneTarget, MolecularTestPanel
+from .panels import GeneTarget, MolecularTestPanel
 from .workflows import WorkflowDefinition, WorkflowStep, SampleHistory
 from .batches import InstrumentRun, PCRPlate, PlateWell, NGSLibrary, NGSPool
 from .qc import QCMetricDefinition, ControlSample, QCRecord

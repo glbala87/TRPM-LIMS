@@ -60,26 +60,54 @@ class SessionSecurityMiddleware(MiddlewareMixin):
 class PasswordChangeMiddleware(MiddlewareMixin):
     """
     Middleware to enforce password change requirements.
-    Redirects users who need to change their password.
+
+    Two triggers force a password change:
+      1. ``UserProfile.require_password_change`` is set (e.g., by an admin
+         reset or after a security event).
+      2. The password is older than ``settings.PASSWORD_MAX_AGE_DAYS``,
+         when that setting is set to a positive number.
+
+    API endpoints under ``/api/`` are exempt from the redirect (API clients
+    should check their user profile to decide whether to prompt).
     """
 
     EXEMPT_URLS = [
         '/admin/password_change/',
         '/admin/logout/',
+        '/accounts/logout/',
         '/api/',  # Don't enforce on API endpoints
     ]
 
     def process_request(self, request):
         if not request.user.is_authenticated:
             return
+        if not hasattr(request.user, 'userprofile'):
+            return
 
-        if hasattr(request.user, 'userprofile'):
-            if request.user.userprofile.require_password_change:
-                # Check if current URL is exempt
-                for url in self.EXEMPT_URLS:
-                    if request.path.startswith(url):
-                        return
-                return redirect(reverse('admin:password_change'))
+        profile = request.user.userprofile
+
+        # Trigger 1: admin/explicit force
+        force = bool(profile.require_password_change)
+
+        # Trigger 2: password age exceeds max
+        from django.conf import settings as dj_settings
+        max_age_days = getattr(dj_settings, 'PASSWORD_MAX_AGE_DAYS', 0) or 0
+        if max_age_days > 0 and profile.last_password_change:
+            age = timezone.now() - profile.last_password_change
+            if age > timedelta(days=max_age_days):
+                force = True
+                # Persist the flag so API clients can see it too.
+                if not profile.require_password_change:
+                    profile.require_password_change = True
+                    profile.save(update_fields=['require_password_change'])
+
+        if not force:
+            return
+
+        for url in self.EXEMPT_URLS:
+            if request.path.startswith(url):
+                return
+        return redirect(reverse('admin:password_change'))
 
 
 class UserSessionTrackingMiddleware(MiddlewareMixin):

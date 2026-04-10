@@ -2,6 +2,7 @@
 Signal handlers for automatic audit logging.
 """
 from decimal import Decimal
+from django.db.models.fields.files import FieldFile
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
@@ -17,11 +18,21 @@ def serialize_value(value):
         return None
     if isinstance(value, Decimal):
         return float(value)
+    # Django FieldFile / ImageFieldFile — store just the stored name.
+    # Accessing `.url` without a file raises ValueError, so check the class.
+    if isinstance(value, FieldFile):
+        return value.name or None
     if hasattr(value, 'pk'):
         return str(value)
     if hasattr(value, 'isoformat'):
         return value.isoformat()
-    return value
+    if isinstance(value, (str, int, float, bool, list, dict)):
+        return value
+    # Fallback — stringify anything else rather than crashing the save.
+    try:
+        return str(value)
+    except Exception:
+        return None
 
 # Models to exclude from automatic audit logging
 EXCLUDED_MODELS = [
@@ -33,7 +44,22 @@ EXCLUDED_MODELS = [
     'ContentType',
     'Permission',
     'MigrationRecorder',
+    'Migration',  # django.db.migrations.recorder.MigrationRecorder.Migration
 ]
+
+# Django-internal app labels whose models must never trigger audit logging.
+# In particular, the `migrations` app is used by Django's migration recorder,
+# and firing signals on its rows during `contenttypes.0001_initial` tries to
+# create a ContentType before the `name` column has been removed in 0002,
+# which crashes test DB creation.
+EXCLUDED_APP_LABELS = {
+    'migrations',
+    'contenttypes',
+    'auth',
+    'admin',
+    'sessions',
+    'token_blacklist',
+}
 
 # Models that should have full audit trail (snapshots)
 AUDITABLE_MODELS = [
@@ -49,7 +75,12 @@ AUDITABLE_MODELS = [
 def should_audit(instance):
     """Check if a model instance should be audited."""
     model_name = instance.__class__.__name__
-    return model_name not in EXCLUDED_MODELS
+    if model_name in EXCLUDED_MODELS:
+        return False
+    app_label = getattr(instance._meta, 'app_label', None)
+    if app_label in EXCLUDED_APP_LABELS:
+        return False
+    return True
 
 
 def should_create_snapshot(instance):

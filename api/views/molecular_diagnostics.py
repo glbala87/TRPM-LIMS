@@ -294,9 +294,23 @@ class MolecularResultViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def review(self, request, pk=None):
-        """Mark result as reviewed."""
-        result = self.get_object()
+        """
+        Mark result as reviewed.
+
+        When ENABLE_PART11 is active, the request body must include
+        `password`, `reason`, and `meaning` to record an electronic
+        signature per 21 CFR 11.50 / 11.200.
+        """
+        from compliance.enforcement import enforce_esignature
         from django.utils import timezone
+
+        result = self.get_object()
+        enforce_esignature(
+            request=request,
+            record=result,
+            default_reason='REVIEW',
+            default_meaning='I have reviewed this result for accuracy.',
+        )
         result.reviewed_by = request.user
         result.reviewed_at = timezone.now()
         if result.status == 'PENDING':
@@ -306,9 +320,23 @@ class MolecularResultViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        """Approve and finalize result."""
-        result = self.get_object()
+        """
+        Approve and finalize result.
+
+        When ENABLE_PART11 is active, the request body must include
+        `password`, `reason`, and `meaning` to record an electronic
+        signature per 21 CFR 11.50 / 11.200.
+        """
+        from compliance.enforcement import enforce_esignature
         from django.utils import timezone
+
+        result = self.get_object()
+        enforce_esignature(
+            request=request,
+            record=result,
+            default_reason='APPROVAL',
+            default_meaning='I approve this result for release.',
+        )
         result.approved_by = request.user
         result.approved_at = timezone.now()
         result.status = 'FINAL'
@@ -318,13 +346,13 @@ class MolecularResultViewSet(viewsets.ModelViewSet):
 
 class VariantCallViewSet(viewsets.ModelViewSet):
     """ViewSet for VariantCall model."""
-    queryset = VariantCall.objects.all().select_related('result', 'gene_target').order_by('-id')
+    queryset = VariantCall.objects.all().select_related('molecular_result').order_by('-id')
     serializer_class = VariantCallSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = VariantCallFilter
-    search_fields = ['hgvs_cdna', 'hgvs_protein', 'gene_target__symbol', 'dbsnp_id']
+    search_fields = ['hgvs_c', 'hgvs_p', 'gene', 'dbsnp_id']
     ordering_fields = ['chromosome', 'position', 'classification']
 
 

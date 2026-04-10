@@ -1,0 +1,30 @@
+[run]
+source = .
+branch = True
+omit =
+    */migrations/*
+    */tests/*
+    */test_*.py
+    */tests.py
+    */__pycache__/*
+    manage.py
+    lims/wsgi.py
+    lims/asgi.py
+    venv/*
+    .venv/*
+    staticfiles/*
+    media/*
+
+[report]
+precision = 1
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+
+[html]
+directory = htmlcov

@@ -33,11 +33,21 @@ class ReportGenerator:
         'DEFAULT': 'molecular_diagnostics/reports/base_report.html',
     }
 
-    def __init__(self):
-        if not WEASYPRINT_AVAILABLE:
+    def __init__(self, require_pdf=True):
+        """
+        Args:
+            require_pdf: If False, the generator will return HTML when
+                WeasyPrint is unavailable instead of raising. Useful for
+                local dev and HTML preview.
+        """
+        self.pdf_available = WEASYPRINT_AVAILABLE
+        if require_pdf and not WEASYPRINT_AVAILABLE:
             raise ImportError(
-                "WeasyPrint is required for PDF generation. "
-                "Install it with: pip install weasyprint"
+                "WeasyPrint is required for PDF generation but the system "
+                "libraries are not installed. On macOS: `brew install pango`; "
+                "on Debian/Ubuntu: `apt install libpango-1.0-0 libpangoft2-1.0-0 "
+                "libcairo2`. See https://doc.courtbouillon.org/weasyprint/stable/"
+                "first_steps.html#installation"
             )
 
     def generate_report(self, result, generated_by=None):

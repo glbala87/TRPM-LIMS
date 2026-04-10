@@ -66,11 +66,11 @@ class StorageRackViewSet(viewsets.ModelViewSet):
     - positions: GET /api/storage-racks/{id}/positions/
     - next_available: GET /api/storage-racks/{id}/next-available/
     """
-    queryset = StorageRack.objects.all().select_related('storage_unit').order_by('name')
+    queryset = StorageRack.objects.all().select_related('unit').order_by('name')
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ['name', 'storage_unit__name']
+    search_fields = ['name', 'rack_id', 'unit__name']
     ordering_fields = ['name']
 
     def get_serializer_class(self):

@@ -1,35 +1,34 @@
 """
 Serializers for reagents app models.
+Field lists are aligned with the actual model definitions in reagents/models.py.
 """
 from rest_framework import serializers
 from reagents.models import Reagent, ReagentCategory, ReagentUsage, MolecularReagent
 
 
 class ReagentCategorySerializer(serializers.ModelSerializer):
-    """Serializer for ReagentCategory model."""
-
     class Meta:
         model = ReagentCategory
         fields = ['id', 'name', 'description']
 
 
 class ReagentSerializer(serializers.ModelSerializer):
-    """Serializer for Reagent model."""
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
     is_low_stock = serializers.SerializerMethodField()
     is_expired = serializers.SerializerMethodField()
 
     class Meta:
         model = Reagent
         fields = [
-            'id', 'name', 'category', 'category_display', 'vendor', 'lot_number',
-            'stock_quantity', 'unit', 'expiration_date', 'storage_location',
-            'on_order', 'is_low_stock', 'is_expired', 'notes', 'created_at', 'updated_at'
+            'id', 'name', 'category', 'category_name', 'vendor', 'lot_number',
+            'received_qty', 'opening_quantity', 'quantity_in_stock',
+            'item_received_date', 'expiration_date',
+            'on_order', 'is_low_stock', 'is_expired',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id']
 
     def get_is_low_stock(self, obj):
-        return obj.stock_quantity < 10
+        return (obj.quantity_in_stock or 0) < 10
 
     def get_is_expired(self, obj):
         if obj.expiration_date:
@@ -39,95 +38,88 @@ class ReagentSerializer(serializers.ModelSerializer):
 
 
 class ReagentListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for Reagent list views."""
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
 
     class Meta:
         model = Reagent
-        fields = ['id', 'name', 'category_display', 'lot_number', 'stock_quantity', 'expiration_date']
+        fields = ['id', 'name', 'category_name', 'lot_number', 'quantity_in_stock', 'expiration_date']
 
 
 class ReagentCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating Reagent records."""
-
     class Meta:
         model = Reagent
         fields = [
-            'name', 'category', 'vendor', 'lot_number', 'stock_quantity',
-            'unit', 'expiration_date', 'storage_location', 'notes'
+            'name', 'category', 'vendor', 'lot_number',
+            'received_qty', 'opening_quantity', 'quantity_in_stock',
+            'item_received_date', 'expiration_date',
         ]
 
 
 class ReagentUsageSerializer(serializers.ModelSerializer):
-    """Serializer for ReagentUsage model."""
     reagent_name = serializers.CharField(source='reagent.name', read_only=True)
 
     class Meta:
         model = ReagentUsage
-        fields = ['id', 'reagent', 'reagent_name', 'lab_order', 'quantity_used', 'usage_date']
+        fields = ['id', 'reagent', 'reagent_name', 'used_in_lab_order', 'quantity_used', 'usage_date']
         read_only_fields = ['id', 'usage_date']
 
 
 class MolecularReagentSerializer(serializers.ModelSerializer):
-    """Serializer for MolecularReagent model."""
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     storage_temperature_display = serializers.CharField(source='get_storage_temperature_display', read_only=True)
-    is_expired = serializers.BooleanField(read_only=True)
-    is_low_stock = serializers.BooleanField(read_only=True)
-    effective_expiration = serializers.DateField(read_only=True)
-    test_panels = serializers.StringRelatedField(many=True, read_only=True)
-    gene_targets = serializers.StringRelatedField(many=True, read_only=True)
+    test_panels = serializers.StringRelatedField(many=True, read_only=True, source='linked_test_panels')
+    gene_targets = serializers.StringRelatedField(many=True, read_only=True, source='linked_gene_targets')
 
     class Meta:
         model = MolecularReagent
         fields = [
             'id', 'name', 'category', 'category_display', 'catalog_number', 'lot_number',
-            'vendor', 'sequence', 'tm', 'gc_content', 'modification_5_prime', 'modification_3_prime',
+            'manufacturer', 'supplier', 'sequence', 'tm_celsius', 'gc_content',
+            'modification_5prime', 'modification_3prime',
+            'concentration', 'concentration_unit',
             'storage_temperature', 'storage_temperature_display', 'storage_location',
-            'initial_volume_ul', 'current_volume_ul', 'reactions_remaining',
-            'received_date', 'opened_date', 'expiration_date', 'stability_days_after_opening',
-            'effective_expiration', 'is_validated', 'validation_date', 'validated_by',
-            'is_expired', 'is_low_stock', 'test_panels', 'gene_targets',
-            'notes', 'created_at', 'updated_at'
+            'initial_volume_ul', 'current_volume_ul',
+            'reactions_per_kit', 'reactions_remaining',
+            'received_date', 'opened_date', 'expiration_date',
+            'stability_after_opening_days',
+            'is_active', 'is_validated', 'validation_date', 'validation_notes',
+            'test_panels', 'gene_targets',
+            'notes', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class MolecularReagentListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for MolecularReagent list views."""
     category_display = serializers.CharField(source='get_category_display', read_only=True)
-    is_expired = serializers.BooleanField(read_only=True)
-    is_low_stock = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = MolecularReagent
         fields = [
             'id', 'name', 'category_display', 'catalog_number', 'lot_number',
-            'current_volume_ul', 'expiration_date', 'is_expired', 'is_low_stock', 'is_validated'
+            'current_volume_ul', 'expiration_date', 'is_validated',
         ]
 
 
 class MolecularReagentCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating MolecularReagent records."""
-
     class Meta:
         model = MolecularReagent
         fields = [
-            'name', 'category', 'catalog_number', 'lot_number', 'vendor',
-            'sequence', 'tm', 'gc_content', 'modification_5_prime', 'modification_3_prime',
+            'name', 'category', 'catalog_number', 'lot_number',
+            'manufacturer', 'supplier', 'sequence', 'tm_celsius', 'gc_content',
+            'modification_5prime', 'modification_3prime',
+            'concentration', 'concentration_unit',
             'storage_temperature', 'storage_location', 'initial_volume_ul',
-            'received_date', 'expiration_date', 'stability_days_after_opening',
-            'notes'
+            'received_date', 'expiration_date', 'stability_after_opening_days',
+            'notes',
         ]
 
     def create(self, validated_data):
-        # Set current_volume_ul to initial_volume_ul on creation
-        validated_data['current_volume_ul'] = validated_data.get('initial_volume_ul')
+        # Mirror initial volume to current volume on creation.
+        validated_data.setdefault('current_volume_ul', validated_data.get('initial_volume_ul'))
         return super().create(validated_data)
 
 
 class ReagentInventorySerializer(serializers.Serializer):
-    """Serializer for reagent inventory summary."""
     total_reagents = serializers.IntegerField()
     low_stock_count = serializers.IntegerField()
     expired_count = serializers.IntegerField()
